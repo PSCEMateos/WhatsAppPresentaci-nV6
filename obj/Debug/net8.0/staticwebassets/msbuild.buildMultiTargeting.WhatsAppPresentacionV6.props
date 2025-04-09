@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\WhatsAppPresentacionV6.props" />
+</Project>

@@ -1,0 +1,12 @@
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\WhatsAppPresentacionV6.exe
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\appsettings.Development.json
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\appsettings.json
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\WhatsAppPresentacionV6.dll
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\WhatsAppPresentacionV6.deps.json
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\WhatsAppPresentacionV6.runtimeconfig.json
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\WhatsAppPresentacionV6.pdb
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\BouncyCastle.Cryptography.dll
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\Microsoft.OpenApi.dll
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Emilio\source\repos\WhatsAppPresentacionV6\obj\Release\net8.0\PubTmp\Out\Swashbuckle.AspNetCore.SwaggerUI.dll

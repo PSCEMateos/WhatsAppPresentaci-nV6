@@ -1,0 +1,272 @@
+[
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantilla",
+    "RelativePath": "api/Probador/crear-plantilla",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "categoria",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "idioma",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador11",
+    "RelativePath": "api/Probador/crear-plantilla/probador11",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador12",
+    "RelativePath": "api/Probador/crear-plantilla/probador12",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador13",
+    "RelativePath": "api/Probador/crear-plantilla/probador13",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador14",
+    "RelativePath": "api/Probador/crear-plantilla/probador14",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador15",
+    "RelativePath": "api/Probador/crear-plantilla/probador15",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador6",
+    "RelativePath": "api/Probador/crear-plantilla/probador6",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador7",
+    "RelativePath": "api/Probador/crear-plantilla/probador7",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "CrearPlantillaProbador8",
+    "RelativePath": "api/Probador/crear-plantilla/probador8",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "ProcesarFlow",
+    "RelativePath": "api/Probador/Flow/Procesar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "encryptedRequest",
+        "Type": "WhatsAppPresentacionV6.Modelos.RecivedMedia.EncryptedRequestModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "MandarFlow",
+    "RelativePath": "api/Probador/mensajes/Mandar/Flow",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "MandarPlantillaConFlow",
+    "RelativePath": "api/Probador/mensajes/Mandar/Plantlla/Flow",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "MandarMensaje",
+    "RelativePath": "api/Probador/mensajes/MandarSimple",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "GetMessages",
+    "RelativePath": "api/Probador/messages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.Probador",
+    "Method": "UploadPublicKey",
+    "RelativePath": "api/Probador/PublicKey/Upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "publicKey",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.PresentacionController",
+    "Method": "WebhookValidation",
+    "RelativePath": "api/webhook",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "hub.mode",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "hub.challenge",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "hub.verify_token",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.String",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.PresentacionController",
+    "Method": "Webhook",
+    "RelativePath": "api/webhook",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.PresentacionController",
+    "Method": "GetMessages",
+    "RelativePath": "messages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.PresentacionController",
+    "Method": "GetCompradores",
+    "RelativePath": "Service/Compradores/List",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.PresentacionController",
+    "Method": "GetWhatsAppFlowServiceLog",
+    "RelativePath": "Service/Logs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WhatsAppPresentacionV6.Controllers.WeatherForecastController",
+    "Method": "Get",
+    "RelativePath": "WeatherForecast",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[WhatsAppPresentacionV6.WeatherForecast, WhatsAppPresentacionV6, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ],
+    "EndpointName": "GetWeatherForecast"
+  }
+]
