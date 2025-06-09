@@ -1,55 +1,100 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace WhatsAppPresentacionV6.Modelos
+namespace WhatsAppPresentacionV11.Modelos
 {
     public class Flow_response_json_Models
     {
         public string flow_token { get; set; }
     }
-    public class Flow_response_json_Model_568198656271468_Registrate : Flow_response_json_Models //Regístrate
+    public class CompradorInfo2
     {
-        public string? screen_0_Apellidos_1 { get; set; }
-        public string? screen_0_Telfono_3 { get; set; }
-        public string? screen_0_Nombres_0 { get; set; }
-        public string? screen_0_Tipo_de_persona_4 { get; set; }
-        public string? screen_0_Tipo_Identificacin_5 { get; set; }
-        public string? screen_0_Correo_2 { get; set; }
-        public string? screen_1_NIT_0 { get; set; }
-        public string? screen_1_Departamento_3 { get; set; }
-        public string? screen_1_Tipo_Rgimen_5 { get; set; }
-        public string? screen_1_Obligaciones_Fiscale_6 { get; set; }
-        public string? screen_1_Label_2 { get; set; }
-        public string? screen_1_Ciudad_4 { get; set; }
-        public string? screen_1_Digito_Verificacin_1 { get; set; }
-        public string? screen_2_Razn_social_0 { get; set; }
-    }
-    public class Flow_response_json_Model_1877921042740421_FacturaColombia : Flow_response_json_Models//Factura Colombia
-    {
-        public string? screen_0_Primer_Nombre_0 { get; set; }
-        public string? screen_0_Segundo_nombre_1 { get; set; }
-        public string? screen_0_Apellido_Paterno_2 { get; set; }
-        public string? screen_0_Apellido_Materno_3 { get; set; }
-        public string? screen_0_NIT_4 { get; set; }
-        public string? screen_0_Correo_Electrnico_5 { get; set; }
-        public string? screen_1_Primer_Nombre_0 { get; set; }
-        public string? screen_1_Segundo_Nombre_1 { get; set; }
-        public string? screen_1_Apellido_Paterno_2 { get; set; }
-        public string? screen_1_Apellido_Materno_3 { get; set; }
-        public string? screen_1_NIT_4 { get; set; }
-        public string? screen_1_Razn_social_5 { get; set; }
-        public string? screen_2_Direccin_0 { get; set; }
-        public string? screen_2_Telfono_1 { get; set; }
-        public string? screen_2_Descripcin_2 { get; set; }
-        public string? screen_2_Cantidad_3 { get; set; }
-    }
-    public class Flow_response_json_Model_1277233923341533_ComprobanteNitClienteYCombrador : Flow_response_json_Models//Comprobante NIT Cliente y Combrador
-    {
-        public string? screen_0_Nombre_0 { get; set; }//Nombre Comprador
-        public string? screen_0_NIT_1 { get; set; }//NIT Comprador
-        public string? screen_0_NIT_2 { get; set; }// NIT Cliente
+        public string? TipoPersona { get; set; } // "Natural" or "Juridica"
 
+        public string? Nombre { get; set; }
+        public string? ApellidoPaterno { get; set; }
+        public string? ApellidoMaterno { get; set; }
+        public string? RazonSocial { get; set; }
+
+        public string? NIT { get; set; }
+        public string? DigitoVerificacion { get; set; }
+
+        public string? Direccion { get; set; }
+        public string? Departamento { get; set; }
+        public string? Ciudad { get; set; }
+
+        public string? TipoRegimen { get; set; }
+        public string? ObligacionesFiscales { get; set; }
+
+        public List<string> Telefonos { get; set; } = new();
+        public List<string> Correos { get; set; } = new();
+
+        public List<ClienteInfo2> Clientes { get; set; } = new();
+        public List<ProductoInfo2> Productos { get; set; } = new();
     }
-    public class Flow_response_json_Model_1297640437985053_InformacionDelCliente : Flow_response_json_Models//Información del cliente
+
+    public class ClienteInfo2
+    {
+        public string? NIT { get; set; }
+        public string? TipoCliente { get; set; }
+        public string? Nombre { get; set; }
+        public string? ApellidoPaterno { get; set; }
+        public string? ApellidoMaterno { get; set; }
+        public string? Correo { get; set; }
+        public string? Telefono { get; set; }
+        public string? TipoIdentificacion { get; set; }
+        public string? DigitoVerificacion { get; set; }
+        public string? Departamento { get; set; }
+        public string? Ciudad { get; set; }
+        public string? Direccion { get; set; }
+        public string? TipoRegimen { get; set; }
+        public string? ObligacionesFiscales { get; set; }
+        public string? RazonSocial { get; set; }
+    }
+
+    public class ProductoInfo2
+    {
+        public string Nombre { get; set; }
+        public string PrecioUnitario { get; set; }
+        public string InfoAdicional { get; set; }
+        public string Codigo { get; set; }
+        public string UnidadMedida { get; set; }
+        public string Activo { get; set; }
+        public string Traslados { get; set; }
+        public string Impuesto { get; set; }
+        public string TasaCuota { get; set; }
+        public string ImpuestosSaludables { get; set; }
+        public string ImpuestosSaludables2 { get; set; }
+    }
+
+    public class Flow_response_json_Model_1348966996441374_Crear_o_Modificar_Comprador : Flow_response_json_Models
+    {
+        public string? registra_comprador_tipo_comprador { get; set; }
+
+        public string? registra_comprador_juridical_razon_social { get; set; }
+        public string? registra_comprador_juridical_nit { get; set; }
+        public string? registra_comprador_juridical_digito_verificacion { get; set; }
+        public string? registra_comprador_juridical_direccion { get; set; }
+        public string? registra_comprador_juridical_departamento { get; set; }
+        public string? registra_comprador_juridical_ciudad { get; set; }
+        public string? registra_comprador_juridical_tipo_regimen { get; set; }
+        public string? registra_comprador_juridical_obligaciones_fiscales { get; set; }
+        public string? registra_comprador_natural_nombre { get; set; }
+        public string? registra_comprador_natural_apellido_paterno { get; set; }
+        public string? registra_comprador_natural_apellido_materno { get; set; }
+        public string? registra_comprador_natural_correo { get; set; }
+        public string? registra_comprador_natural_telefono { get; set; }
+        public string? registra_comprador_natural_tipo_identificacion { get; set; }
+        public string? registra_comprador_natural_nit { get; set; }
+        public string? registra_comprador_natural_digito_verificacion { get; set; }
+        public string? registra_comprador_natural_direccion { get; set; }
+        public string? registra_comprador_natural_departamento { get; set; }
+        public string? registra_comprador_natural_ciudad { get; set; }
+        public string? registra_comprador_natural_tipo_regimen { get; set; }
+        public string? registra_comprador_natural_obligaciones_fiscales { get; set; }
+        public Array? registra_comprador_natural_documento { get; set; }
+    }
+    /*public class Flow_response_json_Model_1297640437985053_InformacionDelCliente : Flow_response_json_Models//Información del cliente
     {
         public string? screen_0_Primer_Nombre_0 { get; set; }
         public string? screen_0_Segundo_Nombre_1 { get; set; }
@@ -73,7 +118,7 @@ namespace WhatsAppPresentacionV6.Modelos
         public string? RegisterClient_Natural_Ciudad { get; set; }
         public string? RegisterClient_Natural_Tipo_Rgimen { get; set; }
         public string? RegisterClient_Natural_Obligaciones_Fiscale { get; set; }
-        public string? RegisterClient_Natural_documento { get; set; }
+        public Array? RegisterClient_Natural_documento { get; set; }
 
         public string? RegisterClient_Juridical_Razon_Social { get; set; }
         public string? RegisterClient_Juridical_Digito_Verificacion { get; set; }
@@ -108,22 +153,31 @@ namespace WhatsAppPresentacionV6.Modelos
         public string? ModificarCliente_Empresa_Juridical_Ciudad { get; set; }
         public string? ModificarCliente_Empresa_Juridical_Tipo_Regimen { get; set; }
         public string? ModificarCliente_Empresa_Juridical_Obligaciones_Fiscales { get; set; }
-    }
+    }*/
     public class Flow_response_json_Model_682423707677994_InformacionFactura : Flow_response_json_Models//Información Factura
     {
         public string? screen_0_Telfono_0 { get; set; }
         public string? screen_0_Direccin_1 { get; set; }
         public string? screen_0_Monto_2 { get; set; }
         public string? screen_0_Descripcin_3 { get; set; }
+        public string? screen_0_Correos_4 { get; set; }
+    }
+    public class Flow_response_json_Model_1414924193269074_Observaciones_y_Mail : Flow_response_json_Models//Información Factura
+    {
+        public string? Observaciones_y_Mail_0_Observaciones_0 { get; set; }
+        public string? Observaciones_y_Mail_0_Correos_1 { get; set; }
+        public string? Observaciones_y_Mail_ID { get; set; }
     }
     public class CompradorInfo
     {
-        public Flow_response_json_Model_568198656271468_Registrate? Datos { get; set; }
         public Flow_response_json_Model_637724539030495_RegistrarPersonaFisicaSimple? DatosPersonaFisicaSimple { get; set; }
         public Flow_response_json_Model_1187351356327089_RegistrarEmpresa? DatosRegistrarEmpresa { get; set; }
         public List<string> Telefonos { get; set; } = new();
         public List<string> Correos { get; set; } = new();
-        public List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> Clientes { get; set; } = new();
+        //public List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> Clientes { get; set; } = new();
+        public List<Flow_response_json_Model_1584870855544061_CrearCliente> Clientes2 { get; set; } = new();
+        public List<Flow_response_json_Model_1142951587576244_Crear_Producto> Productos { get; set; } = new();
+        //public Flow_response_json_Model_568198656271468_Registrate? Datos { get; set; }
     }
     public class Flow_response_json_Model_647884018138514_FacturaColombiaComplejo : Flow_response_json_Models
     {
@@ -159,12 +213,14 @@ namespace WhatsAppPresentacionV6.Modelos
         // Screen 4 - Confirmacion (terminal screen)
         // No additional fields needed as it just displays collected data
     }
-
     public class DocumentData
     {
         public string? media_id { get; set; }
         public string? file_name { get; set; }
         public string? url { get; set; }
+        public string? sha256 { get; set; }
+        public string? mime_type { get; set; }
+        public long? id { get; set; }
         public string? cdn_url { get; set; }
         public long? size { get; set; }
         public DateTime? created_at { get; set; }
@@ -188,10 +244,10 @@ namespace WhatsAppPresentacionV6.Modelos
         public string? Registrar_Persona_Fisica_Telfono_4 { get; set; }
         public string? Registrar_Persona_Fisica_Tipo_Identificacin_5 { get; set; }
 
-        public DocumentData? screen_1_documento { get; set; } // Might have to be "DocumentPicker"
+        public List<DocumentData>? screen_1_documento { get; set; } // Might have to be "DocumentPicker"
         public string? screen_1_NIT_0 { get; set; }
         public string? screen_1_Digito_Verificacin_1 { get; set; }
-        public string? screen_1_Label_2 { get; set; }
+        public string? screen_1_Label_2 { get; set; } // Dirección
         public string? screen_1_Departamento_3 { get; set; }
         public string? screen_1_Ciudad_4 { get; set; }
         public string? screen_1_Tipo_Rgimen_5 { get; set; }
@@ -481,8 +537,9 @@ namespace WhatsAppPresentacionV6.Modelos
     }
     public class Flow_response_json_Model_1187351356327089_RegistrarEmpresa : Flow_response_json_Models//Registrar empresa
     {
-        public string? Registrar_Empresa_Nombre_0 { get; set; }//Nombre Empresa
+        public string? Registrar_Empresa_Nombre_0 { get; set; }//Nombre Empresa, debería ser Razón Social
         public string? Registrar_Empresa_NIT_1 { get; set; }//NIT Empresa
+        public string? Registrar_Empresa_Correo_2 { get; set; }//Correo Empresa
 
         public string? Registrar_Empresa_Digito_Verificacin_1 { get; set; }
         public string? Registrar_Empresa_Direccion_2 { get; set; }
@@ -666,23 +723,25 @@ namespace WhatsAppPresentacionV6.Modelos
     public class Flow_response_json_Model_1584870855544061_CrearCliente : Flow_response_json_Models //CrearCliente
     {
         public string? RegistraCliente_Tipo_Cliente { get; set; }
+
         public string? RegisterClient_Natural_Nombre { get; set; }
+        public string? RegisterClient_Natural_NIT { get; set; }
         public string? RegisterClient_Natural_Apellido_Paterno { get; set; }
         public string? RegisterClient_Natural_Apellido_Materno { get; set; }
         public string? RegisterClient_Natural_Correo { get; set; }
         public string? RegisterClient_Natural_Telefono { get; set; }
         public string? RegisterClient_Natural_Tipo_Identificacion { get; set; }
-        public string? RegisterClient_Natural_NIT { get; set; }
         public string? RegisterClient_Natural_Digito_Verificacin { get; set; }
-        public string? RegisterClient_Natural_Label { get; set; }
+        public string? RegisterClient_Natural_Direccion { get; set; }
         public string? RegisterClient_Natural_Departamento { get; set; }
         public string? RegisterClient_Natural_Ciudad { get; set; }
         public string? RegisterClient_Natural_Tipo_Rgimen { get; set; }
         public string? RegisterClient_Natural_Obligaciones_Fiscale { get; set; }
-        public string? RegisterClient_Natural_documento { get; set; }
+        //public string? RegisterClient_Natural_documento { get; set; }
 
         public string? RegisterClient_Juridical_Razon_Social { get; set; }
         public string? RegisterClient_Juridical_NIT { get; set; }
+        public string? RegisterClient_Juridical_Email { get; set; }
         public string? RegisterClient_Juridical_Digito_Verificacion { get; set; }
         public string? RegisterClient_Juridical_Direccion { get; set; }
         public string? RegisterClient_Juridical_Departamento { get; set; }
@@ -713,6 +772,7 @@ namespace WhatsAppPresentacionV6.Modelos
     {
         public string? ModificarCliente_Empresa_Juridical_Razon_Social { get; set; }
         public string? ModificarCliente_Empresa_Juridical_NIT { get; set; }
+        public string? ModificarCliente_Empresa_Juridical_Email { get; set; }
         public string? ModificarCliente_Empresa_Tipo_Cliente { get; set; }
         public string? ModificarCliente_Empresa_Juridical_Digito_Verificacion { get; set; }
         public string? ModificarCliente_Empresa_Juridical_Direccion { get; set; }
@@ -723,18 +783,62 @@ namespace WhatsAppPresentacionV6.Modelos
     }
     public class Flow_response_json_Model_1142951587576244_Crear_Producto : Flow_response_json_Models
     {
-        public string Agregar_Producto_Nombre { get; set; }
-        public string Agregar_Producto_Precio_Unitario { get; set; }
-        public string Agregar_Producto_Info_Adicional { get; set; }
-        public string Agregar_Producto_Codigo { get; set; }
-        public string Agregar_Producto_Unidad_Medida { get; set; }
-        public string Agregar_Producto_Activo { get; set; }
-        public string Agregar_Producto_traslados { get; set; }
-        public string Agregar_Producto_Impuesto { get; set; }
-        public string Agregar_Producto_Tasa_cuota { get; set; }
-        public string Agregar_Producto_Impuestos_Saludables { get; set; }
-        public string Agregar_Producto_Impuestos_Saludables2 { get; set; }
+        public string? Agregar_Producto_Nombre { get; set; }
+        public string? Agregar_Producto_Precio_Unitario { get; set; }
+        public string? Agregar_Producto_Info_Adicional { get; set; }
+        public string? Agregar_Producto_Codigo { get; set; }
+        public string? Agregar_Producto_Unidad_Medida { get; set; }
+        public string? Agregar_Producto_Activo { get; set; }
+        public string? Agregar_Producto_traslados { get; set; }
+        public string? Agregar_Producto_Impuesto { get; set; }
+        public string? Agregar_Producto_Tasa_cuota { get; set; }
+        public string? Agregar_Producto_Impuestos_Saludables { get; set; }
+        public List<string>? Agregar_Producto_Impuestos_Saludables2 { get; set; }
     }
+    public class Flow_response_json_Model_572042871927108_Modificar_Producto : Flow_response_json_Models
+    {
+        public string? Modificar_Producto_Nombre { get; set; }
+        public string? Modificar_Producto_Precio_Unitario { get; set; }
+        public string? Modificar_Producto_Info_Adicional { get; set; }
+        public string? Modificar_Producto_Codigo { get; set; }
+        public string? Modificar_Producto_Unidad_Medida { get; set; }
+        public string? Modificar_Producto_Activo { get; set; }
+        public string? Modificar_Producto_traslados { get; set; }
+        public string? Modificar_Producto_Impuesto { get; set; }
+        public string? Modificar_Producto_Tasa_cuota { get; set; }
+        public string? Modificar_Producto_Impuestos_Saludables { get; set; }
+        public List<string>? Modificar_Producto_Impuestos_Saludables2 { get; set; }
+    }
+    public class Flow_response_json_Model_1232523891647775_Registro_DIAN : Flow_response_json_Models
+    {
+        public string? Registros_DIAN_Prefijo_0 { get; set; }
+        public string? Registros_DIAN_Num_Resolucion_1 { get; set; }
+        public string? Registros_DIAN_Fecha_Resolucion_2 { get; set; }
+        public string? Registros_DIAN_Desde_3 { get; set; }
+        public string? Registros_DIAN_Hasta_4 { get; set; }
+    }
+    public class Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad : Flow_response_json_Models
+    {
+        public string PUyC_Precio_Unitario { get; set; }
+        public string PUyC_Cantidad { get; set; }
+    }
+    /*public class Flow_response_json_Model_568198656271468_Registrate : Flow_response_json_Models //Regístrate
+    {
+        public string? screen_0_Apellidos_1 { get; set; }
+        public string? screen_0_Telfono_3 { get; set; }
+        public string? screen_0_Nombres_0 { get; set; }
+        public string? screen_0_Tipo_de_persona_4 { get; set; }
+        public string? screen_0_Tipo_Identificacin_5 { get; set; }
+        public string? screen_0_Correo_2 { get; set; }
+        public string? screen_1_NIT_0 { get; set; }
+        public string? screen_1_Departamento_3 { get; set; }
+        public string? screen_1_Tipo_Rgimen_5 { get; set; }
+        public string? screen_1_Obligaciones_Fiscale_6 { get; set; }
+        public string? screen_1_Label_2 { get; set; }
+        public string? screen_1_Ciudad_4 { get; set; }
+        public string? screen_1_Digito_Verificacin_1 { get; set; }
+        public string? screen_2_Razn_social_0 { get; set; }
+    }*/
 }
 /*Ejemplo de respuesta:
 
