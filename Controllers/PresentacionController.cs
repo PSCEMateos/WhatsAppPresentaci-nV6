@@ -1,6 +1,6 @@
 ﻿
-using WhatsAppPresentacionV6.Modelos;
-using WhatsAppPresentacionV6.Servicios;
+using WhatsAppPresentacionV11.Modelos;
+using WhatsAppPresentacionV11.Servicios;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Net.Http.Headers;
@@ -10,11 +10,13 @@ using System.Diagnostics.Eventing.Reader;
 using System.Text.Json;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.Text;
+using System.Net.Http;
 
-namespace WhatsAppPresentacionV6.Controllers
+
+
+
+namespace WhatsAppPresentacionV11.Controllers
 {
-    //[ApiController]
-    //[Route("api/chatbot-presentacion")]
     public class PresentacionController : ControllerBase
     {
         private readonly WhatsAppMessageService _messageSendService;
@@ -22,32 +24,22 @@ namespace WhatsAppPresentacionV6.Controllers
         private readonly WhatsAppFlow _manejoDeComprador;
         private static string _lastMessageState = string.Empty;
         private readonly FlowDecryptionEncryptionService _decryptionEncryptionService;
-        private static readonly List<string> _nombres = new()
-        {
-            "Jesús Trejo", "Jesús Garza", "Jesús Zepeda", "Alejandro Trejo",
-            "Alejandro Garza", "Javier Zepeda", "Carlos Mendoza", "María López",
-            "Sofía Fernández", "Juan Hernández", "Luis Martínez", "Ana González",
-            "Roberto Cruz", "Lucía Vargas", "Pablo Ramírez", "Gabriela Castillo",
-            "Fernando Pérez", "Daniela Sánchez", "Héctor Morales", "Paola Jiménez"
-        };
+
         private static readonly List<Flow_response_json_Model_1142951587576244_Crear_Producto> _productos = new(){};
-        private static readonly List<string> _idNombres = new()
-        {
-            "TEDJ800706QA1", "TEDJ800706QA2", "TEDJ800706QA3", "TEDJ800706QA4",
-            "TEDJ800706QA5", "TEDJ800706QA6", "TEDJ800706QA7", "TEDJ800706QA8",
-            "TEDJ800706QA9", "TEDJ800706QB1", "TEDJ800706QB2", "TEDJ800706QB3",
-            "TEDJ800706QB4", "TEDJ800706QB5", "TEDJ800706QB6", "TEDJ800706QB7",
-            "TEDJ800706QB8", "TEDJ800706QB9", "TEDJ800706QC1", "TEDJ800706QC2"
-        };
         private static List<string> _receivedMessages = new List<string>();
         private static List<(string ButtonId, string ButtonLabelText)> _botones = new();
+        private static List<string> correosACopiar = new List<string>();
+
+        private static Dictionary<string, (string productoCodigoModificar, string productoNombreOld)> _producto_a_modificar = new() { };
         private static Dictionary<string, (string lastMessageState, string oldUserMessage, 
-            string montoFactura, string tipoProgramación, string usoCFDI, 
-            string usuarioAUsar, string usuarioAUsarID, string NITCliente, 
-            string NITComprador, string NombreComprador, List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> clientExistance, byte valueInList)> _RegisteredPhoneDicitonary = new Dictionary<string, (string lastMessageState, string oldUserMessage,
-            string montoFactura, string tipoProgramación, string usoCFDI,
-            string usuarioAUsar, string usuarioAUsarID, string NITCliente,
-            string NITComprador, string NombreComprador, List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> clientExistance, byte valueInList)>();
+            string montoFactura, string NITCliente, 
+            string NITComprador, string NombreComprador,
+            string Factura_Observaciones, List<string> ListaProductos, List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> ListaPreciosYCantidades)> 
+                _RegisteredPhoneDicitonary = new Dictionary
+            <string, (string lastMessageState, string oldUserMessage,
+            string montoFactura, string NITCliente,
+            string NITComprador, string NombreComprador,
+            string Factura_Observaciones, List<string> ListaProductos, List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> ListaPreciosYCantidades)>();
 
         public PresentacionController()
         {
@@ -89,8 +81,6 @@ namespace WhatsAppPresentacionV6.Controllers
             using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
             {
                 string rawBody = await reader.ReadToEndAsync();
-                _receivedMessages.Add("Raw JSON recibido:");
-                _receivedMessages.Add(rawBody);
                 try
                 {
                     webhookData = JsonSerializer.Deserialize<WebHookResponseModel>(rawBody, new JsonSerializerOptions
@@ -117,7 +107,7 @@ namespace WhatsAppPresentacionV6.Controllers
                 _receivedMessages.Add("Estructura de mensaje recibido inválida");
                 return BadRequest("Estructura inválida");
             }
-            _receivedMessages.Add("1");
+            //_receivedMessages.Add("1");
 
             //Revisa si es un mensaje encriptado
             if (!(string.IsNullOrEmpty(webhookData.encrypted_flow_data) ||
@@ -133,7 +123,7 @@ namespace WhatsAppPresentacionV6.Controllers
                 return Ok();
             }
 
-            _receivedMessages.Add("Mensaje válido"); //Marca que está funcionando
+            //_receivedMessages.Add("Mensaje válido"); //Marca que está funcionando
             string fromPhoneNumber = NormalizarNumeroMexico(webhookData.entry[0].changes[0].value.messages[0].from);
             try
             {
@@ -145,15 +135,15 @@ namespace WhatsAppPresentacionV6.Controllers
                         "", // lastMessageState
                         "", // oldUserMessage
                         "", // montoFactura
-                        "", // tipoProgramación
-                        "", // usoCFDI
-                        "", // usuarioAUsar
-                        "", // usuarioAUsarID
                         "", // NITCliente
                         "", // NITComprador
                         "",  // _NombreComprador
-                        new List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> { },
-                        0
+                        //"", //Factura_Telefono
+                        //"", //Factura_dirección
+                        //"", //Factura_Monto
+                        "", //Factura_Descripción era. Ahora es Factura_Observaciones
+                        new List<string> { }, // ListaProductos
+                        new List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> { } //ListaPreciosYCantidades
                         );
                 }
 
@@ -194,26 +184,125 @@ namespace WhatsAppPresentacionV6.Controllers
         [Route("messages")]
         public dynamic GetMessages()
         {
+            _receivedMessages.Add("Recabando mensajes: ");
             // Return the list of received messages as the response 
             return _receivedMessages;
         }
 
-        //Recabamos los Mensajes VIA GET 
+        //Recabamos los Mensajes del servicio VIA GET 
         [HttpGet]
-        //DENTRO DE LA RUTA webhook 
         [Route("Service/Logs")]
         public dynamic GetWhatsAppFlowServiceLog()
         {
             // Return the list of received messages as the response 
             return _manejoDeComprador.GetEventsList();
         }
+
         [HttpGet]
-        //DENTRO DE LA RUTA webhook 
         [Route("Service/Compradores/List")]
         public dynamic GetCompradores()
         {
-            // Return the list of received messages as the response 
+            // Return the list of compradores as the response 
             return _manejoDeComprador.ReturnCompradores();
+        }
+
+        [HttpGet("productos/todos")]
+        public IActionResult GetTodosLosProductos()
+        {
+            if (_productos == null || !_productos.Any())
+                return Ok("No hay productos registrados.");
+
+            var resultado = new StringBuilder();
+            int contador = 1;
+
+            foreach (var producto in _productos)
+            {
+                resultado.AppendLine($"Producto #{contador++}:");
+                resultado.AppendLine($"  Nombre: {producto.Agregar_Producto_Nombre}");
+                resultado.AppendLine($"  Precio Unitario: {producto.Agregar_Producto_Precio_Unitario}");
+                resultado.AppendLine($"  Código: {producto.Agregar_Producto_Codigo}");
+                resultado.AppendLine($"  Unidad de Medida: {producto.Agregar_Producto_Unidad_Medida}");
+                resultado.AppendLine($"  Activo: {producto.Agregar_Producto_Activo}");
+                resultado.AppendLine($"  Traslados: {producto.Agregar_Producto_traslados}");
+                resultado.AppendLine($"  Impuesto: {producto.Agregar_Producto_Impuesto}");
+                resultado.AppendLine($"  Tasa o Cuota: {producto.Agregar_Producto_Tasa_cuota}");
+                resultado.AppendLine($"  Impuestos Saludables: {producto.Agregar_Producto_Impuestos_Saludables}");
+                resultado.AppendLine($"  Impuestos Saludables (Lista): {string.Join(", ", producto.Agregar_Producto_Impuestos_Saludables2 ?? new List<string>())}");
+                resultado.AppendLine($"  Info Adicional: {producto.Agregar_Producto_Info_Adicional}");
+                resultado.AppendLine($"  Flow Token: {producto.flow_token}");
+                resultado.AppendLine(new string('-', 40));
+            }
+            return Ok(resultado.ToString());
+        }
+
+        [HttpPost("producto/Añadir")]
+        public IActionResult CrearEjemplo()
+        {
+            var productoEjemeplos = new List<Flow_response_json_Model_1142951587576244_Crear_Producto>
+            {
+                new Flow_response_json_Model_1142951587576244_Crear_Producto
+                {
+                    flow_token = "token-ejemplo-123",
+                    Agregar_Producto_Nombre = "Pan Integral",
+                    Agregar_Producto_Precio_Unitario = "25",
+                    Agregar_Producto_Info_Adicional = "500g, hecho con harina integral",
+                    Agregar_Producto_Codigo = "PANINT500",
+                    Agregar_Producto_Unidad_Medida = "pieza",
+                    Agregar_Producto_Activo = "true",
+                    Agregar_Producto_traslados = "incluye",
+                    Agregar_Producto_Impuesto = "IVA",
+                    Agregar_Producto_Tasa_cuota = "16",
+                    Agregar_Producto_Impuestos_Saludables = "Ninguno",
+                    Agregar_Producto_Impuestos_Saludables2 = new List<string> { "Ninguno" }
+                },
+                new Flow_response_json_Model_1142951587576244_Crear_Producto
+                {
+                    flow_token = "opcionCrearProductoFlow573214304814",
+                    Agregar_Producto_Nombre = "Camiseta",
+                    Agregar_Producto_Precio_Unitario = "50000",
+                    Agregar_Producto_Codigo = "01",
+                    Agregar_Producto_Unidad_Medida = "Unidad",
+                    Agregar_Producto_Activo = "Activar",
+                    Agregar_Producto_traslados = "IVA",
+                    Agregar_Producto_Impuesto = "0",
+                    Agregar_Producto_Tasa_cuota = "19",
+                    Agregar_Producto_Impuestos_Saludables = "Desactivar",
+                    Agregar_Producto_Impuestos_Saludables2 = new List<string>()
+                },
+                new Flow_response_json_Model_1142951587576244_Crear_Producto
+                {
+                    flow_token = "opcionCrearProductoFlow573214304814",
+                    Agregar_Producto_Nombre = "Chaqueta",
+                    Agregar_Producto_Precio_Unitario = "200000",
+                    Agregar_Producto_Codigo = "02",
+                    Agregar_Producto_Unidad_Medida = "Unidad",
+                    Agregar_Producto_Activo = "Activar",
+                    Agregar_Producto_traslados = "IVA",
+                    Agregar_Producto_Impuesto = "0",
+                    Agregar_Producto_Tasa_cuota = "19",
+                    Agregar_Producto_Impuestos_Saludables = "Desactivar",
+                    Agregar_Producto_Impuestos_Saludables2 = new List<string>()
+                },
+                new Flow_response_json_Model_1142951587576244_Crear_Producto
+                {
+                    flow_token = "opcionCrearProductoFlow573023871573",
+                    Agregar_Producto_Nombre = "Chocoramo",
+                    Agregar_Producto_Precio_Unitario = "1000",
+                    Agregar_Producto_Codigo = "1234",
+                    Agregar_Producto_Unidad_Medida = "Unidad",
+                    Agregar_Producto_Activo = "Activar",
+                    Agregar_Producto_traslados = "IVA",
+                    Agregar_Producto_Impuesto = "0",
+                    Agregar_Producto_Tasa_cuota = "19",
+                    Agregar_Producto_Impuestos_Saludables = "Desactivar",
+                    Agregar_Producto_Impuestos_Saludables2 = new List<string>(),
+                    Agregar_Producto_Info_Adicional = "Chocolate"
+                }
+            };
+            _receivedMessages.Add("Productos ejemplo");
+            _productos.AddRange(productoEjemeplos);
+
+            return Ok("Ejemplos creados exitosamente");
         }
 
         private async Task<string> HandleIncomingMessage(WebHookResponseModel webhookData, string fromPhoneNumber)
@@ -274,95 +363,85 @@ namespace WhatsAppPresentacionV6.Controllers
             _receivedMessages.Add($"Interactive Button Message");
             string messageStatus = "";
 
-            //if(GetLastMessageState(fromPhoneNumber) == )
-
             _receivedMessages.Add($"Selecting path");
             switch (selectedButtonId)
             {
+                case "opcion_Iniciar_Sesión":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Cuál es tu NIT o nombre como facturador?");
+                    break; 
                 case "opcion_Generar_Factura_Text":
                     messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Qué NIT o nombre usarás para facturar?");
-                    messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Escribe el nombre o el NIT");
+                    //messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Escribe el nombre o el NIT");
                     break;
-
-                case "opcion_Enviar_Documento_Firmar":
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Favor de enviar el documento");
-                    break;
-
-                case "opcion_Programación_Aplicaciones"://Paso 11: El usuario elige Programación de aplicaciones
-                                                        //Paso 12: Bot: "Dame la cantidad a cobrar antes de impuestos."
-                    
-                    //_tipoProgramación = "Programación de Aplicaciones";
-                    UpdatetTipoProgramación(fromPhoneNumber, "Programación de Aplicaciones");
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Dame la cantidad a cobrar antes de impuestos");
-                    break;
-
-                case "opcion_Programación_videojuegos"://Paso 11: El usuario elige Programación de aplicaciones
-                                                       //Paso 12: Bot: "Dame la cantidad a cobrar antes de impuestos."
-
-                    //_tipoProgramación = "Programación de Videojuegos";
-                    UpdatetTipoProgramación(fromPhoneNumber, "Programación de Videojuegos");
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Dame la cantidad a cobrar antes de impuestos");
-                    break;
-
                 case "opcion_Recibir_Registro_Flow":
-                    //messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "568198656271468", $"opcionRecibirRegistroFlow{fromPhoneNumber}", "published", $"Tu teléfono {fromPhoneNumber} aún no está registrado.", "¡Regístrate!");// sustituir por "published" al publicar flow
+                    
                     (string, string)? phoneExistance = _manejoDeComprador.TeléfonoExiste(fromPhoneNumber);
 
                     string messageText = phoneExistance != null
                         ? $"Tu teléfono {fromPhoneNumber} está registrado con {phoneExistance.Value.Item1} - {phoneExistance.Value.Item2}"
-                        : $"Tu teléfono {fromPhoneNumber} aún no está registrado";
+                        : $"Para registrar una persona física deberás llenar el siguiente formulario";
                     if (phoneExistance != null)
                     {
                         messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"Para registrar una persona física deberás llenar el siguiente formulario.\n Para modificar una persona física existente, registrar usando mismo nombre y NIT.");
                     }
-                    else
-                    {
-                        messageText = "Para registrar una persona física deberás llenar el siguiente formulario";
-                    }
+
                     messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "637724539030495", $"opcionRecibirRegistroFlow{fromPhoneNumber}", "published", messageText, "Registrar");
                     
-                        break;
+                    break;
                 case "opcion_Registrar_Empresa_Flow":
 
-                    (string, string)? phoneCompanyExistance = _manejoDeComprador.TeléfonoExiste(fromPhoneNumber);
+                    //(string, string)? phoneCompanyExistance = _manejoDeComprador.TeléfonoExiste(fromPhoneNumber);
 
-                    string messageCompanyText = phoneCompanyExistance != null
-                        ? $"está registrado con {phoneCompanyExistance.Value.Item1} - {phoneCompanyExistance.Value.Item2}"
-                        : "aún no está registrado";
+                    //string messageCompanyText = phoneCompanyExistance != null
+                        //? $"está registrado con {phoneCompanyExistance.Value.Item1} - {phoneCompanyExistance.Value.Item2}"
+                        //: "aún no está registrado";
 
-                    string buttonCompanyText = phoneCompanyExistance != null
-                        ? $"Modificar"
-                        : "Registrar";
+                    //string buttonCompanyText = phoneCompanyExistance != null
+                        //? $"Modificar"
+                        //: "Registrar";
 
                     messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1187351356327089", $"opcionRegistrarEmpresaFlow{fromPhoneNumber}", "published", $"Para registrar una empresa deberás llenar el siguiente formulario"/*$"Tu teléfono {fromPhoneNumber} {messageCompanyText}."*/, "Registrar"/*buttonCompanyText*/);// sustituir flow correcto
                     break;
-                case "opcion_Generar_Factura_Flow_0_1":
-                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1877921042740421", $"opcionGenerarFacturaFlow{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
+                case "opcion_Generar_Factura_Registrar_Persona_Flow":
+
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "637724539030495", $"opcionRecibirRegistroFlow{fromPhoneNumber}", "published", "Para registrar una persona física deberás llenar el siguiente formulario", "Registrar");
+
+                    break;
+                case "opcion_Generar_Factura_Registrar_Empresa_Flow":
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1187351356327089", $"opcionRegistrarEmpresaFlow{fromPhoneNumber}", "published", $"Para registrar una empresa deberás llenar el siguiente formulario"/*$"Tu teléfono {fromPhoneNumber} {messageCompanyText}."*/, "Registrar"/*buttonCompanyText*/);// sustituir flow correcto
                     break;
                 case "opcion_Registrar_Cliente":
-                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1297640437985053", $"opcionRegistrarCliente{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1584870855544061",/*"1297640437985053",*/ $"opcionRegistrarCliente{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
                     break;
                 case "opcion_Continuar_Con_La_Factura":
-                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "682423707677994", $"opcionFacturar{fromPhoneNumber}", "published", $"Desea facturar?", "Facturar");
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1414924193269074",/*"682423707677994",*/ $"opcionFacturar{fromPhoneNumber}", "published", $"Deseas facturar?", "Facturar");
                     break;
                 case "opcion_Cancelar":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_configurar", "Configurar") };//{ ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Soy Timbrame Bot, ¿En que puedo ayudarte?", "Selecciona opción", "Hay 2 opciones", _botones);
+                    UpdateRestart(fromPhoneNumber);
+                    messageStatus = await MainMenuButton(fromPhoneNumber, null);
                     break;
                 case "opcion_configurar":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Registros_DIAN", "Registros DIAN"), ("opcion_Configurar_Productos ", "Productos"), ("opcion_configurar_Clientes", "Clientes") };//{ ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Registros_DIAN", "Registros DIAN"), ("opcion_Configurar_Productos ", "Productos"), ("opcion_configurar_Clientes", "Clientes") };
                     messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres configurar?", "Selecciona opción", "Hay 3 opciones", _botones);
                     break;
                 case "opcion_configurar_Clientes":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Agregar_Clientes", "Agregar"), ("opcion_Modificar_Clientes ", "Modificar") };
+                    int CliPorCel = _manejoDeComprador.ContarClientesPorTelefono(fromPhoneNumber);
+                    if (CliPorCel <= 0)
+                    {
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Agregar_Clientes", "Agregar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres hacer con un cliente?", "Selecciona opción", "Hay 3 opciones", _botones);
+                        _receivedMessages.Add(messageStatus);
+                        break;
+                    }
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Agregar_Clientes", "Agregar"), ("opcion_Modificar_Clientes ", "Modificar"), ("opcion_Cancelar", "Reiniciar Proceso") };
                     messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres hacer con un cliente?", "Selecciona opción", "Hay 2 opciones", _botones);
-                    UpdatetTipoProgramación(fromPhoneNumber, "");
+                    _receivedMessages.Add(messageStatus);
                     break;
                 case "opcion_Agregar_Clientes":
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Que es tu NIT o nombre de usuario?");
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Cuál es tu NIT o nombre como facturador?");
                     break;
                 case "opcion_Modificar_Clientes":
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Que es tu NIT o nombre de usuario?");
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Cuál es tu NIT o nombre como facturador?");
                     break;
                 case "opcion_Modificar_Clientes_Persona_Natural":
                     messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿A quien modificas? Puedes escribir su NIT, Nombre o una parte de estos");
@@ -371,10 +450,13 @@ namespace WhatsAppPresentacionV6.Controllers
                     messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Que empresa modificas? Puedes escribir su NIT, Razon social o una parte de estos");
                     break;
                 case "opcion_Configurar_Productos":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Productos_agregar", "Agregar"), ("opcion_Configurar_Productos_Modificar ", "Modificar") };
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres hacer con productos?", "Selecciona opción", "Hay 3 opciones", _botones);
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Productos_agregar", "Agregar"), ("opcion_Configurar_Productos_Modificar", "Modificar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres hacer con productos?", "Pudes agregar o modificar uno", "Hay 3 opciones", _botones);
                     break;
                 case "opcion_Configurar_Productos_agregar":
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1142951587576244", $"opcionCrearProductoFlow{fromPhoneNumber}", "published", $"Creando Producto", "Crear");
+                    break;
+                case "opcion_Anadir_Producto_agregar":
                     messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1142951587576244", $"opcionCrearProductoFlow{fromPhoneNumber}", "published", $"Creando Producto", "Crear");
                     break;
                 case "opcion_Configurar_Productos_Modificar":
@@ -382,38 +464,311 @@ namespace WhatsAppPresentacionV6.Controllers
                     break;
                 case "opcion_Configurar_Registros_DIAN":
                     UpdateRestart(fromPhoneNumber);
-
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¡Registros DIAN configurados!");
+                    //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¡Registros DIAN configurados!"); 
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1232523891647775", $"opcionFacturar{fromPhoneNumber}", "published", $"Registros DIAN?", "Registrar");
+                    return messageStatus;
+                    break;
+                case "opcion_configurar_usuario":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Iniciar_Sesión", "Iniciar Sesión"), ("opcion_configurar_usuario_modificar", "Modificar") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer con un usuario?", "¿Registrar uno nuevo, relacionar uno existente a tu teléfono o modificar uno?", "Regístrate", _botones);
+                    break;
+                case "opcion_configurar_usuario_modificar":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_configurar_usuario_modificar_modificar", "Modificar existente"), ("opcion_configurar_usuario_modificar_borrar", "Borrar existente"), ("opcion_Cancelar", "Cancelar") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacerle a un usuario?", "¿Modificar o borrar?", "Regístrate", _botones);
+                    break;
+                case "opcion_configurar_usuario_modificar_modificar":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "No implementado");
+                    break;
+                case "opcion_configurar_usuario_modificar_borrar":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "No implementado");
                     break;
                 case "opcion_Recibir_Elegir_tipo_Registro":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Persona física"), ("opcion_Registrar_Empresa_Flow", "Empresa") };
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Registrando, ¿A quien quieres registrar?", "Selecciona opción", "Hay 2 opciones", _botones);
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Persona Natural"), ("opcion_Registrar_Empresa_Flow", "Empresa"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Registrando, ¿A quien quieres registrar?", "Selecciona opción", "Hay 3 opciones", _botones);
                     break;
-                case "opcion_Generar_Factura_Flow_0":
-                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1277233923341533", $"opcionGenerarIdentidadFlow{fromPhoneNumber}", "published", $"Favor de comprobar identidad", "Responder");
+                case "opcion_Anadir_Producto":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Favor de indicar nombre del producto");
                     break;
-                default:
+                case "opcion_Generar_Factura_Cliente":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+                    break;
+                case "opcion_Observaciones_Y_Mail":
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1414924193269074", $"opcion_Observaciones_Y_Mail{fromPhoneNumber}", "published", "Llenar para añadir observaciones o emails a copiar", "Abrir");
+                    break;
+                case "opcion_Finalizar_Factura":
+                    //messageStatus = await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://test-timbrame.azurewebsites.net/Ejemplo/24a8a905-f155-4726-a27f-1451a8bf5388.pdf", "Preview.pdf");
+                    _receivedMessages.Add("Botón: Finalizar Factura");
+                    var nombreCompradorpre = GetNombreComprador(fromPhoneNumber);
+                    var nitCompradorpre = GetNITComprador(fromPhoneNumber);
+                    var nitClientepre = GetNITCliente(fromPhoneNumber);
 
-                    if (_idNombres.Contains(selectedButtonId))
+                    string observacionespre = GetObservaciones(fromPhoneNumber) ?? "-";
+                    var productospre = _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var datapre) ? datapre.ListaProductos : new List<string>();
+                    var preciosYCantidadespre = GetPrecioUnitarioYCantidad(fromPhoneNumber);
+
+
+                    var productosCompletospre = new List<Flow_response_json_Model_1142951587576244_Crear_Producto>();
+                    _receivedMessages.Add($"Cantidad de productos registrados: {productospre?.Count ?? 0}");
+                    for (int i = 0; i < productospre.Count; i++)
                     {
-                        //_usuarioAUsar = _nombres[_idNombres.IndexOf(selectedButtonId)];// Paso 7: El bot recibe nombre
-                        UpdateUsuarioAUsar(fromPhoneNumber, _nombres[_idNombres.IndexOf(selectedButtonId)]);
-                        //_usuarioAUsarID = selectedButtonId;
-                        UpdateUsuarioAUsarID(fromPhoneNumber, selectedButtonId);
-                        //Paso 8: Bot: responde con un mensaje "¡Bien! ¿Que producto vamos a facturar a {nombre} ({ID})?"
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"¡Bien! ¿Que producto vamos a facturar a {GetUsuarioAUsar(fromPhoneNumber)/*_usuarioAUsar*/} ({GetUsuarioAUsarID(fromPhoneNumber)/*_usuarioAUsarID*/})?");
-                        selectedButtonId = "ID_De_Nombre";
+                        var codigo = productospre[i];
+                        var producto = _productos.FirstOrDefault(p => p.Agregar_Producto_Codigo == codigo);
+                        if (producto != null)
+                        {
+                            productosCompletospre.Add(producto);
+                            _receivedMessages.Add($"Producto {producto.Agregar_Producto_Codigo} añadido a lista");
+                        }
+                    }
+
+                    var JSONtoSendPre = _manejoDeComprador.CrearFacturaJson(nombreCompradorpre, nitCompradorpre, nitClientepre, observacionespre, productosCompletospre, preciosYCantidadespre, correosACopiar);
+                    _receivedMessages.Add("JSONtoSend: ");
+                    _receivedMessages.Add(JSONtoSendPre);
+                    _receivedMessages.Add("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, JSONtoSendPre);
+                    //_receivedMessages.Add("JSONtoSend mandado");
+                    //_receivedMessages.Add(messageStatus);
+
+                    string preURLFactura = await _manejoDeComprador.PedirPreviewJson(JSONtoSendPre);
+
+                    _receivedMessages.Add("http recibido");
+                    _receivedMessages.Add(preURLFactura);
+
+                    messageStatus = await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, preURLFactura, "Preview.pdf");
+
+                    //Final nuevo código
+
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Finalizar_Factura", "Enviar factura"), ("opcion_Finalizar_Modificar_Factura", "Modificar factura") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Deseas Finalizar la factura?", "El documento es un preview", "Hay 3 opciones", _botones);
+                    break;
+                case "opcion_Finalizar_Finalizar_Factura":
+                    var nombreComprador = GetNombreComprador(fromPhoneNumber);
+                    var nitComprador = GetNITComprador(fromPhoneNumber);
+                    var nitCliente = GetNITCliente(fromPhoneNumber);
+
+                    string observaciones = GetObservaciones(fromPhoneNumber);
+                    var productos = _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.ListaProductos : new List<string>();
+                    var preciosYCantidades = GetPrecioUnitarioYCantidad(fromPhoneNumber);
+
+                    string resumen = $"*Resumen del Formulario Recibido:*\n\n";
+
+                    resumen += $"*Comprador:* {nombreComprador}, NIT: {nitComprador}\n";
+
+
+                    resumen += $"\n*Información de Factura:*\n";
+                    /*resumen += $"📍 *Dirección:* {direccion}\n";
+                    resumen += $"📞 *Teléfono:* {telefono}\n";
+                    resumen += $"📝 *Descripción:* {descripcion}\n";
+                    resumen += $"💰 *Monto Total:* {monto}\n";*/
+
+
+                    resumen += $"*Cliente:* {nitCliente}\n";
+
+                    if (productos.Any())
+                    {
+                        resumen += $"\n*Productos:*\n";
+                        for (int i = 0; i < productos.Count; i++)
+                        {
+                            var productoCodigo = productos[i]; // invertir codigo y nombre si se usan al revés
+                            var producto = _productos.FirstOrDefault(p => p.Agregar_Producto_Codigo == productoCodigo);
+                            var precioCantidad = i < preciosYCantidades.Count ? preciosYCantidades[i] : null;
+                            var productoNombre = producto?.Agregar_Producto_Nombre ?? "Nombre no encontrado";
+
+                            resumen += $"- {productoNombre}, {productoCodigo}";
+                            if (precioCantidad != null)
+                            {
+                                resumen += $" | Cantidad: {precioCantidad.PUyC_Cantidad}, Precio Unitario: {precioCantidad.PUyC_Precio_Unitario}";
+                            }
+                            resumen += "\n";
+                        }
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Opción no reconocida.");
+                        resumen += "\n*Productos:* No se registraron productos.\n";
                     }
-                    
+
+                    //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, resumen);
+
+                    var productosCompletos = new List<Flow_response_json_Model_1142951587576244_Crear_Producto>();
+
+                    for (int i = 0; i < productos.Count; i++)
+                    {
+                        var codigo = productos[i];
+                        var producto = _productos.FirstOrDefault(p => p.Agregar_Producto_Codigo == codigo);
+                        if (producto != null)
+                        {
+                            productosCompletos.Add(producto);
+                            _receivedMessages.Add("Producto añadido a lista");
+                        }
+                    }
+
+                    var JSONtoSend = _manejoDeComprador.CrearFacturaJson(nombreComprador, nitComprador, nitCliente, observaciones, productosCompletos, preciosYCantidades, correosACopiar);
+                    _receivedMessages.Add("JSONtoSend: ");
+                    _receivedMessages.Add(JSONtoSend);
+                    _receivedMessages.Add("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, JSONtoSend);
+                    //_receivedMessages.Add("JSONtoSend mandado");
+                    //_receivedMessages.Add(messageStatus);
+
+                    messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Enviando Factura");
+
+                    string respuestaFactura = await _manejoDeComprador.MandarFacturaJson(JSONtoSend);
+                    _receivedMessages.Add("Respuesta Factura");
+                    _receivedMessages.Add(respuestaFactura);
+
+                    if (respuestaFactura.StartsWith("https"))
+                    {
+                        _receivedMessages.Add("http recibido");
+                        _receivedMessages.Add(messageStatus);
+
+                        messageStatus = await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, respuestaFactura, "Factura.pdf");
+                    }
+                    else if (respuestaFactura == "true" || respuestaFactura.StartsWith("Factura creada correctamente"))
+                    {
+                        _receivedMessages.Add("JSON True");
+                        _receivedMessages.Add(respuestaFactura);
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Ciclo completo");
+
+                        UpdateRestart(fromPhoneNumber);
+
+                        _receivedMessages.Add("Final Final");
+
+                        messageStatus = await MainMenuButton(fromPhoneNumber, null);
+                    }
+                    else if( respuestaFactura == "false")
+                    {
+                        _receivedMessages.Add("JSON False");
+                        _receivedMessages.Add(respuestaFactura);
+
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Finalizar_Factura", "Reintentar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Factura no se pudo regitrar en la DIAN", "¿Deseas reintentar?", "Hay 2 opciones", _botones);
+
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Factura no se pudo regitrar en la DIAN, Reiniciando");
+                    }
+                    else
+                    {
+                        _receivedMessages.Add("JSON mandado");
+                        _receivedMessages.Add(respuestaFactura);
+
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, respuestaFactura);
+
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Finalizar_Factura", "Reintentar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, respuestaFactura, "¿Deseas reintentar?", "Hay 2 opciones", _botones);
+                    }
+
+                    _receivedMessages.Add("Status message");
+                    _receivedMessages.Add(messageStatus);
+
+                    break;
+                case "opcion_Finalizar_Modificar_Factura":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Cliente", "Cliente a Facturar"), ("opcion_Finalizar_Modificar_Productos", "Productos"), ("opcion_Finalizar_Modificar_Opciones", "Más opciones") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que información de la factura deseas modificar?", "Información Guardada", "Hay 3 opciones", _botones);
+                    break;
+                case "opcion_Finalizar_Modificar_Opciones":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Info_Adicional", "Info adicional"), ("opcion_Finalizar_Factura", "Finalizar factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que información de la factura deseas modificar?", "Información Guardada", "Hay 3 opciones", _botones);
+                    break;
+                case "opcion_Finalizar_Modificar_Cliente":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Cliente_Cambiar", "Cambiar"), ("opcion_Finalizar_Modificar_Cliente_Modificar", "Modificar"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres cambiar del cliente?", "¿Cambiar de cliente a facturar o modificar el cliente?", "Hay 3 opciones", _botones);
+                    break;
+                case "opcion_Finalizar_Modificar_Cliente_Cambiar":
+                    // Función apuntando a lógica para cambiar de cliente
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿Que cliente deseas usar?");
+                    break;
+                case "opcion_Finalizar_Modificar_Cliente_Modificar":
+                    // implementar lógica para modificar cliente existente
+                    _receivedMessages.Add("opcion_Finalizar_Modificar_Cliente_Modificar");
+                    string clienteTipo = _manejoDeComprador.ReturnClientType(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber), GetNITCliente(fromPhoneNumber));
+
+                    if (string.IsNullOrEmpty(clienteTipo) || clienteTipo.StartsWith("[Error]"))
+                    {
+                        _receivedMessages.Add("Error al buscar cliente");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Cliente_Modificar", "Volver a intentar"), ("opcion_Finalizar_Factura", "Regresar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Error al buscar cliente", "Información sigue Guardada", "Hay 3 opciones", _botones);
+                    }
+                    else if(clienteTipo == "Tipo_Persona_Juridica")
+                    {
+                        messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1378725303264167", $"opcionModCliJuridicaFlow{fromPhoneNumber}", "published", $"Modificando Cliente", "Modificar");
+                    }
+                    else if (clienteTipo == "Tipo_Persona_Natural")
+                    {
+                        messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "931945452349522", $"opcionModCliNaturalFlow{fromPhoneNumber}", "published", $"Modificando Cliente", "Modificar");
+                    }
+                        break;
+                case "opcion_Finalizar_Modificar_Productos":
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Añadir"), ("opcion_Finalizar_Modificar_Productos_Quitar", "Quitar"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que quieres cambiar de los productos?", "¿Añadir otros o quitar alguno?", "Hay 3 opciones", _botones);
+                    break;
+                case "opcion_Finalizar_Modificar_Productos_Anadir":
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Favor de indicar nombre del producto");
+                    break;
+                case "opcion_Finalizar_Modificar_Productos_Quitar":
+                    _receivedMessages.Add($"opcion_Finalizar_Modificar_Productos_Quitar button");
+
+                    List<string> productosQuitarList = GetProductosEnFacturaList(fromPhoneNumber);
+
+                    if (!productosQuitarList.Any())
+                    {
+                        _receivedMessages.Add("No hay productos para quitar");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Volver a intentar"), ("opcion_Finalizar_Factura", "Regresar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "No hay productos en la factura para eliminar", "Información sigue Guardada", "Hay 3 opciones", _botones);
+                        break;
+                    }
+
+                    var productosEnFactura = _productos
+                        .Where(p => productosQuitarList.Contains(p.Agregar_Producto_Codigo ?? ""))
+                        .ToList();
+
+                    if (!productosEnFactura.Any())
+                    {
+                        _receivedMessages.Add("Productos en factura no encontrados en _productos");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Volver a intentar"), ("opcion_Finalizar_Factura", "Regresar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Productos no encontrados en el catálogo", "Información sigue Guardada", "Hay 3 opciones", _botones);
+                        break;
+                    }
+
+                    if (productosEnFactura.Count != productosQuitarList.Count)
+                        _receivedMessages.Add($"Productos en factura y productos en la lista no coinciden: factura {productosEnFactura.Count}- lista {productosQuitarList.Count}");
+
+                    int totalSets = (int)Math.Ceiling(productosEnFactura.Count / 10.0);
+                    var listaSeccionesProductos = new List<(string, List<(string, string, string)>)>();
+
+                    for (int i = 0; i < totalSets; i++)
+                    {
+                        string setTitle = $"Set {i + 1}";
+
+                        var opciones = productosEnFactura
+                            .Skip(i * 10)
+                            .Take(10)
+                            .Select((producto, index) => (
+                                producto.Agregar_Producto_Codigo ?? $"{index}", // OptionId (usado para selectedListId)
+                                (i * 10 + index + 1).ToString(),               // OptionTitle (número de opción)
+                                producto.Agregar_Producto_Nombre ?? "Producto sin nombre" // OptionDescription
+                            ))
+                            .ToList();
+
+                        listaSeccionesProductos.Add((setTitle, opciones));
+                    }
+                    listaSeccionesProductos.Add(("Otras opciones", new List<(string, string, string)>{
+                        ("opcion_Cancelar", "Reiniciar", "Volver al menú principal"),
+                        ("opcion_Finalizar_Factura", "Regresar", "Volver a ver PDF")
+                    }));
+                    messageStatus = await _messageSendService.EnviarListaDeOpciones( fromPhoneNumber, "Productos en la factura",
+                        "Selecciona el producto a quitar", $"Total: {productosEnFactura.Count}", "Ver productos", listaSeccionesProductos );
+
+                    _receivedMessages.Add($"Lista de opciones enviada");
+
+                    break;
+                case "opcion_Finalizar_Modificar_Info_Adicional":
+                    // implementar lógica para modificar la información adicional
+                    break;
+                default:
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Opción no reconocida.");
+                    messageStatus = await MainMenuButton(fromPhoneNumber, null);
                     break;
             }
 
             _receivedMessages.Add($"Updating _lastMessageState");
-            //_lastMessageState = selectedButtonId;
             UpdateLastMessageState(fromPhoneNumber, selectedButtonId);
 
             return messageStatus;
@@ -426,75 +781,215 @@ namespace WhatsAppPresentacionV6.Controllers
             //string userMessage = webhookData.entry[0].changes[0].value.messages[0].text.body;
             string messageStatus = "";
             _receivedMessages.Add($"Selecting List path");
-            if (selectedListId == "opcion_Registrar_Cliente")
+            switch (selectedListId)
             {
-                messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1297640437985053", $"opcionRegistrarCliente{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
-                //_lastMessageState = selectedListId;
-                UpdateLastMessageState(fromPhoneNumber, selectedListId);
-                _receivedMessages.Add($"List opcion_Registrar_Cliente");
-                return messageStatus;
-            }
-            switch (GetLastMessageState(fromPhoneNumber))//(_lastMessageState)
-            {
-                case "ruta_Factura_programación_3":
-                    switch (selectedListId)
-                    {
-                        case "Gastos_en_General_ID":
-                            //_usoCFDI = "Gastos en general ";
-                            UpdateUsoCFDI(fromPhoneNumber, "Gastos en general ");
-                            messageStatus = await SendInvoiceMessagesAsync(fromPhoneNumber);
-                            break;
-
-                        case "Adquisicion_de_Mercancia_ID":
-                            //_usoCFDI = "Adquisición de mercancía ";
-                            UpdateUsoCFDI(fromPhoneNumber, "Adquisición de mercancía ");
-                            messageStatus = await SendInvoiceMessagesAsync(fromPhoneNumber);
-                            break;
-
-                        case "Honorarios_Medicos_Dentales_y_Gastos_Hospitalarios_ID":
-                            //_usoCFDI = "Honorarios médicos, dentales y gastos hospitalarios";
-                            UpdateUsoCFDI(fromPhoneNumber, "Honorarios médicos, dentales y gastos hospitalarios");
-                            messageStatus = await SendInvoiceMessagesAsync(fromPhoneNumber);
-                            break;
-
-                        case "Pagos_Por_Servicios_Educativos_ID":
-                            //_usoCFDI = "Pagos por servicios educativos (colegiaturas)";
-                            UpdateUsoCFDI(fromPhoneNumber, "Pagos por servicios educativos (colegiaturas)");
-                            messageStatus = await SendInvoiceMessagesAsync(fromPhoneNumber);
-                            break;
-
-                        case "Devoluciones_Descuentos_o_Bonificaciones_ID":
-                            //_usoCFDI = "Devoluciones, descuentos o bonificaciones ";
-                            UpdateUsoCFDI(fromPhoneNumber, "Devoluciones, descuentos o bonificaciones ");
-                            messageStatus = await SendInvoiceMessagesAsync(fromPhoneNumber);
-                            break;
-                        default:
-                            messageStatus = await _messageSendService.EnviarMensaje(fromPhoneNumber, "Seleccionar otra opción");
-                            //selectedListId = _lastMessageState;
-                            UpdateLastMessageState(fromPhoneNumber, selectedListId);
-                            break;
-                    }
-                    _receivedMessages.Add($"Updating _lastMessageState");
-                    //_lastMessageState = selectedListId;
+                case "opcion_Registrar_Cliente":
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1584870855544061", $"opcionRegistrarCliente{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
                     UpdateLastMessageState(fromPhoneNumber, selectedListId);
-                    break;
+                    _receivedMessages.Add($"List opcion_Registrar_Cliente");
+                    return messageStatus;
+                case "opcion_Configurar_Productos_agregar":
+                    _receivedMessages.Add($"opcion_Configurar_Productos_agregar");
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1142951587576244", $"opcionCrearProductoFlow{fromPhoneNumber}", "published", $"Creando Producto", "Crear");
+                    return messageStatus;
+            }
+            switch (GetLastMessageState(fromPhoneNumber))
+            {
                 case "opcion_Generar_Factura_Cliente":
-                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "682423707677994", $"opcionFacturar{fromPhoneNumber}", "published", "Cliente Identificado, ¿Desea facturar?", "Facturar");
-                    //_NITCliente = selectedListId;
+
+                    //messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1414924193269074",/*"682423707677994", */$"opcionFacturar{fromPhoneNumber}", "published", "Cliente Identificado, ¿Deseas facturar?", "Facturar");
+
+                    //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Observaciones_Y_Mail ", "Continuar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    //messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Que deseas hacer", "Selecciona opción", "¿Regrezar al inicio o continuar?", _botones);
+                    
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Favor de indicar nombre del producto a añadir a la factura");
                     UpdateNITCliente(fromPhoneNumber, selectedListId);
-                    UpdateLastMessageState(fromPhoneNumber, "");
-                    //_lastMessageState = "";
-                    //_oldUserMessage = "0";
+                    UpdateLastMessageState(fromPhoneNumber, "opcion_Anadir_Producto");
                     UpdateOldUserMessage(fromPhoneNumber, "0");
                     _receivedMessages.Add($"List Registrado, A facturar");
                     break;
+                case "opcion_Finalizar_Modificar_Cliente_Cambiar":
+
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura", "Ver Factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Cliente a cambiar modificcado", "Selecciona opción", "No puedes registrar aquí", _botones);
+                    _receivedMessages.Add(messageStatus);
+
+                    UpdateNITCliente(fromPhoneNumber, selectedListId);
+                    _receivedMessages.Add($"List Registrado, A facturar");
+                    break;
+                case "opcion_Anadir_Producto":
+                    _receivedMessages.Add($"opcion_Anadir_Producto List");
+                    _receivedMessages.Add($"Producto {selectedListId} seleccionado");
+                    AddProductosEnFacturaList(fromPhoneNumber, selectedListId);
+                    
+                    var productoAUsar = _productos.FirstOrDefault(p =>
+                        !string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) &&
+                        p.Agregar_Producto_Codigo.Equals(selectedListId, StringComparison.OrdinalIgnoreCase));
+
+                    if (productoAUsar == null || string.IsNullOrWhiteSpace(productoAUsar.Agregar_Producto_Precio_Unitario))
+                    {
+                        _receivedMessages.Add($"precioUnitario null or empty");
+                        UpdateRestart(fromPhoneNumber);
+                        messageStatus = await MainMenuButton(fromPhoneNumber, "Error al añadir Precio Unitario");
+                        _receivedMessages.Add(messageStatus);
+                        break;
+                    }
+
+                    string precioString = productoAUsar.Agregar_Producto_Precio_Unitario;
+
+                    if (float.TryParse(precioString, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedFloat))
+                    {
+                        var parameters = new { Precio_Unitario = parsedFloat, Precio_String = precioString };
+                        messageStatus = await _messageSendService.EnviarFlowConDatos(fromPhoneNumber, "651685330992197", $"opcionFacturar{fromPhoneNumber}", "published", "Producto Identificado, proporciona Monto unitario y cantidad de unidades del producto", "Llenar", parameters, "DETAILS");
+                        _receivedMessages.Add($"List Registrado, A facturar");
+                        break;
+                    }
+                    _receivedMessages.Add($"[Error] Couldn't parse");
+
+                    _receivedMessages.Add($"No Old Precio Unitario");
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "624251470432760", $"opcionFacturar{fromPhoneNumber}", "published", "Producto Identificado, proporciona Monto unitario y cantidad de unidades del producto", "Llenar");
+
+                    _receivedMessages.Add($"List Registrado, A facturar");
+                    break;
+                case "opcion_Finalizar_Modificar_Productos_Anadir":
+                    _receivedMessages.Add($"opcion_Finalizar_Modificar_Productos_Anadir List");
+                    _receivedMessages.Add($"Producto {selectedListId} seleccionado");
+                    AddProductosEnFacturaList(fromPhoneNumber, selectedListId);
+
+                    var productoAUsarMod = _productos.FirstOrDefault(p =>
+                        !string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) &&
+                        p.Agregar_Producto_Codigo.Equals(selectedListId, StringComparison.OrdinalIgnoreCase));
+
+                    if (productoAUsarMod == null || string.IsNullOrWhiteSpace(productoAUsarMod.Agregar_Producto_Precio_Unitario))
+                    {
+                        _receivedMessages.Add($"precioUnitario null or empty");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Volver a intentar"), ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado", "Selecciona opción", "No puedes crear aquí", _botones);
+                        _receivedMessages.Add(messageStatus);
+                        break;
+                    }
+
+                    string precioStringMod = productoAUsarMod.Agregar_Producto_Precio_Unitario;
+
+                    if (float.TryParse(precioStringMod, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedFloatMod))
+                    {
+                        var parameters = new { Precio_Unitario = parsedFloatMod, Precio_String = precioStringMod };
+                        messageStatus = await _messageSendService.EnviarFlowConDatos(fromPhoneNumber, "651685330992197", $"opcionFacturar{fromPhoneNumber}", "published", "Producto Identificado, proporciona Monto unitario y cantidad de unidades del producto", "Llenar", parameters, "DETAILS");
+                        _receivedMessages.Add($"List Registrado, A facturar");
+                        break;
+                    }
+                    _receivedMessages.Add($"[Error] Couldn't parse");
+
+                    _receivedMessages.Add($"No Old Precio Unitario");
+                    messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "624251470432760", $"opcionFacturar{fromPhoneNumber}", "published", "Producto sin precio Identificado, proporciona Monto unitario y cantidad de unidades del producto", "Llenar");
+
+                    _receivedMessages.Add($"List Registrado, A facturar");
+                    break;
+                case "opcion_Configurar_Productos_Modificar":
+                    _receivedMessages.Add($"opcion_Configurar_Productos_Modificar List");
+                    _receivedMessages.Add($"Producto {selectedListId} seleccionado");
+
+                    var productoAModificar = _productos.FirstOrDefault(p =>
+                        !string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) &&
+                        p.Agregar_Producto_Codigo.Equals(selectedListId, StringComparison.OrdinalIgnoreCase));
+
+                    if (productoAModificar == null)
+                    {
+                        _receivedMessages.Add($"No existe el producto");
+                        UpdateRestart(fromPhoneNumber);
+                        messageStatus = await MainMenuButton(fromPhoneNumber, "Índice de producto no válido");
+                        _receivedMessages.Add(messageStatus);
+                        break;
+                    }
+                    _receivedMessages.Add($"Producto {productoAModificar.Agregar_Producto_Codigo} seleccionado");
+
+                    string nombreProducto = productoAModificar.Agregar_Producto_Nombre ?? "Nombre del producto";
+                    _receivedMessages.Add($"Nombre del producto: {nombreProducto}");
+
+                    _producto_a_modificar[fromPhoneNumber] = (selectedListId, nombreProducto);
+
+                    string unidadMedidaOriginal = productoAModificar.Agregar_Producto_Unidad_Medida ?? "Unidad de medida";
+                    var mapeoUnidades = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { { "EA", "CADA" }, { "94", "UNIDAD" }, { "Unidad de medida", "Unidad de medida" } };
+                    string UnidadMedida = mapeoUnidades.TryGetValue(unidadMedidaOriginal, out string? valorTraducido)
+                        ? valorTraducido
+                        : "Unidad de medida";
+
+                    string productoActivoOriginal = productoAModificar.Agregar_Producto_Activo ?? "Activo";
+                    var mapeoActivo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { { "Activar", "Activo activado" }, { "Desactivar", "Activo desactivado" }, { "Activo", "Activo" } };
+                    string productoActivo = mapeoActivo.TryGetValue(productoActivoOriginal, out string? valorTraducido2)
+                        ? valorTraducido2
+                        : "Activo";
+
+                    string productoImpuestoOriginal = productoAModificar.Agregar_Producto_traslados ?? "IVA";
+                    var mapeoImpuesto = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { { "0", "Impuesto sobre ventas - IVA" }, { "1", "No responsable de IVA" }, { "IVA", "IVA" } };
+                    string productoImpuesto = mapeoImpuesto.TryGetValue(productoImpuestoOriginal, out string? valorTraducido3)
+                        ? valorTraducido3
+                        : "IVA";
+
+                    string productoImpuestoSaludablesOriginal = productoAModificar.Agregar_Producto_Activo ?? "Impuestos Saludables";
+                    var mapeoImpuestoSaludables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { { "Activar", "Impuesto Saludables activado" }, { "Desactivar", "Impuesto Saludables desactivado" }, { "Impuestos Saludables", "Impuestos Saludables" } };
+                    string productoImpuestoSaludables = mapeoImpuestoSaludables.TryGetValue(productoActivoOriginal, out string? valorTraducido4)
+                        ? valorTraducido4
+                        : "Impuestos Saludables";
+
+                    var parameters2 = new
+                    {
+                        Modificar_Producto_Codigo = selectedListId,
+                        Modificar_Producto_Nombre = nombreProducto ?? "Nombre del producto",
+                        Modificar_Producto_Precio_Unitario = productoAModificar.Agregar_Producto_Precio_Unitario ?? "Precio Unitario",
+                        Modificar_Producto_Info_Adicional = productoAModificar.Agregar_Producto_Info_Adicional ?? "Info",
+                        Modificar_Producto_Unidad_Medida = UnidadMedida,
+                        Modificar_Producto_Activo = productoActivo,
+                        Modificar_Producto_traslados = productoAModificar.Agregar_Producto_traslados ?? "Impuestos traslados",
+                        Modificar_Producto_Impuesto = productoImpuesto,
+                        Modificar_Producto_Tasa_cuota = productoAModificar.Agregar_Producto_Tasa_cuota ?? "Tasa o cuota",
+                        Modificar_Producto_Impuestos_Saludables = productoImpuestoSaludables
+                    };
+                    
+                    messageStatus = await _messageSendService.EnviarFlowConDatos(fromPhoneNumber, "572042871927108", $"opcionFacturarConfigurarProductosModificar{fromPhoneNumber}", "published", "Producto Identificado", "Modificar", parameters2, "Modificar_Producto_Info_Base");
+
+                    
+                    //EnviarFlowConDatos
+
+                    //messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "572042871927108", $"opcionFacturar{fromPhoneNumber}", "published", "Producto Identificado", "Modificar");
+
+                    _receivedMessages.Add(messageStatus);
+                    _receivedMessages.Add("Mandando a 572042871927108");
+                    break;
+                case "opcion_Finalizar_Modificar_Productos_Quitar":
+                    _receivedMessages.Add($"opcion_Finalizar_Modificar_Productos_Quitar List");
+                    _receivedMessages.Add($"Producto {selectedListId} seleccionado");
+
+                    var productosEnFactura = GetProductosEnFacturaList(fromPhoneNumber);
+
+                    if (!productosEnFactura.Contains(selectedListId))
+                    {
+                        _receivedMessages.Add($"Producto no encontrado en factura: {selectedListId}");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Volver a intentar"), ("opcion_Finalizar_Factura", "Regresar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, $"Producto {selectedListId} no encontrado en factura.", "Información sigue Guardada", "Hay 3 opciones", _botones);
+                        break;
+                    }
+
+                    var producto = _productos.FirstOrDefault(p =>
+                        p.Agregar_Producto_Codigo?.Equals(selectedListId, StringComparison.OrdinalIgnoreCase) ?? false);
+                    string nombreProductoQuitar = producto?.Agregar_Producto_Nombre ?? "Producto sin nombre";
+
+                    productosEnFactura.Remove(selectedListId);
+                    _receivedMessages.Add($"Producto quitado: {selectedListId}");
+
+                    //messageStatus = await _messageSendService.EnviarTexto( fromPhoneNumber, $"Producto eliminado: *{nombreProductoQuitar}*" );
+
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Quitar otro"), ("opcion_Finalizar_Factura", "Continuar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, $"Producto eliminado: *{nombreProductoQuitar}*", "Información sigue Guardada", "Hay 3 opciones", _botones);
+
+                    _receivedMessages.Add(messageStatus);
+
+                    break;
             }
-            //switch (selectedListId)
-            //{
-            //    case "opcion1":
-            //        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Seleccionó de una lista");
-            //        break;
-            //}
             return messageStatus;
         }
 
@@ -506,194 +1001,515 @@ namespace WhatsAppPresentacionV6.Controllers
             string userMessage = webhookData.entry[0].changes[0].value.messages[0].text.body;
             if (userMessage == "Reinicio")
             {
+                _receivedMessages.Add($"Reiniciando para: {fromPhoneNumber}");
                 UpdateRestart(fromPhoneNumber);
                 messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¡Reiniciando todo!");
+                _receivedMessages.Add(messageStatus);
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Reinicio");
+                _receivedMessages.Add(messageStatus);
+                return messageStatus;
+            }
+            if (userMessage == "Forzar Finalizar Finalizar")
+            {
+                _receivedMessages.Add("Forzar Finalizar Finalizar");
+                UpdateRestart(fromPhoneNumber);
+
+                string nombreComprador = "ejemplo prueba";
+                string nitComprador = "15083930";
+                string nitCliente = "Amigo";
+                string monto= "500";
+                string telefono = "5526";
+                string direccion = "No";
+                string descripcion = "Puede ser";
+                string observaciones = "Observacion"; 
+
+
+                var productoEjemeplo = new Flow_response_json_Model_1142951587576244_Crear_Producto
+                {
+                    flow_token = "token-ejemplo-123",
+                    Agregar_Producto_Nombre = "Pan Integral",
+                    Agregar_Producto_Precio_Unitario = "25",
+                    Agregar_Producto_Info_Adicional = "500g, hecho con harina integral",
+                    Agregar_Producto_Codigo = "PANINT500",
+                    Agregar_Producto_Unidad_Medida = "pieza",
+                    Agregar_Producto_Activo = "true",
+                    Agregar_Producto_traslados = "incluye",
+                    Agregar_Producto_Impuesto = "IVA",
+                    Agregar_Producto_Tasa_cuota = "16",
+                    Agregar_Producto_Impuestos_Saludables = "Ninguno",
+                    Agregar_Producto_Impuestos_Saludables2 = new List<string> { "Ninguno" }
+                };
+                _productos.Add(productoEjemeplo);
+
+                AddProductosEnFacturaList(fromPhoneNumber, "PANINT500");
+                var AddProductosPrecioYCantidadYPrecio = new Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad
+                {
+                    flow_token = "SuperEjemplo",
+                    PUyC_Cantidad = "5",
+                    PUyC_Precio_Unitario = "4"
+                };
+                AddProductosPrecioYCantidad(fromPhoneNumber, AddProductosPrecioYCantidadYPrecio);
+
+                var productos = _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.ListaProductos : new List<string>();
+                var preciosYCantidades = GetPrecioUnitarioYCantidad(fromPhoneNumber);
+
+                string resumen = $"*Resumen del Formulario Recibido:*\n\n";
+
+                resumen += $"*Comprador:* {nombreComprador}, NIT: {nitComprador}\n";
+
+
+                resumen += $"\n*Información de Factura:*\n";
+                resumen += $"📍 *Dirección:* {direccion}\n";
+                resumen += $"📞 *Teléfono:* {telefono}\n";
+                resumen += $"📝 *Descripción:* {descripcion}\n";
+                resumen += $"💰 *Monto Total:* {monto}\n";
+
+
+                resumen += $"*Cliente:* {nitCliente}\n";
+
+                if (productos.Any())
+                {
+                    resumen += $"\n*Productos:*\n";
+                    for (int i = 0; i < productos.Count; i++)
+                    {
+                        var productoCodigo = productos[i]; // invertir codigo y nombre si se usan al revés
+                        var producto = _productos.FirstOrDefault(p => p.Agregar_Producto_Codigo == productoCodigo);
+                        var precioCantidad = i < preciosYCantidades.Count ? preciosYCantidades[i] : null;
+                        var productoNombre = producto?.Agregar_Producto_Nombre ?? "Nombre no encontrado";
+
+                        resumen += $"- {productoNombre}, {productoCodigo}";
+                        if (precioCantidad != null)
+                        {
+                            resumen += $" | Cantidad: {precioCantidad.PUyC_Cantidad}, Precio Unitario: {precioCantidad.PUyC_Precio_Unitario}";
+                        }
+                        resumen += "\n";
+                    }
+                }
+                else
+                {
+                    resumen += "\n*Productos:* No se registraron productos.\n";
+                }
+
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, resumen);
+                _receivedMessages.Add("Resumen mandado");
+                _receivedMessages.Add(messageStatus);
+
+                var productosCompletos = new List<Flow_response_json_Model_1142951587576244_Crear_Producto>();
+
+                for (int i = 0; i < productos.Count; i++)
+                {
+                    var codigo = productos[i];
+                    var producto = _productos.FirstOrDefault(p => p.Agregar_Producto_Codigo == codigo);
+                    if (producto != null)
+                    {
+                        productosCompletos.Add(producto);
+                        _receivedMessages.Add("Producto añadido a lista");
+                    }
+                }
+
+                var JSONtoSend = _manejoDeComprador.CrearFacturaJson(nombreComprador, nitComprador, nitCliente, observaciones, productosCompletos, preciosYCantidades, correosACopiar);
+                _receivedMessages.Add("JSONtoSend: ");
+                _receivedMessages.Add(JSONtoSend);
+                _receivedMessages.Add("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, JSONtoSend);
+                _receivedMessages.Add("JSONtoSend mandado");
+                _receivedMessages.Add(messageStatus);
+
+                messageStatus = await _manejoDeComprador.MandarFacturaJson(JSONtoSend);
+
+                _receivedMessages.Add("JSON mandado");
+                _receivedMessages.Add(messageStatus);
+
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, messageStatus);
+
+                _receivedMessages.Add("Status message");
+                _receivedMessages.Add(messageStatus);
+
+                UpdateRestart(fromPhoneNumber);
+
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Final Forzado Final");
+                _receivedMessages.Add("Final Forzado Final");
+
+                //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Finalizar_Factura", "Ejemplo"), ("opcion_Cancelar", "Cancelar") };
+                //messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Preparando ejemplo", "¿Usar ejemplo?", "¿O regrezar?", _botones);
+
                 return messageStatus;
             }
             switch (GetLastMessageState(fromPhoneNumber))
             {
-                case "":  
-                         
-                    if (userMessage != GetOldUserMessage(fromPhoneNumber)/*_oldUserMessage*/)
-                    {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¡Hola!");
-                        _receivedMessages.Add("Mensaje inicial: " + messageStatus);
-                        //Construye la lista del botón a enviar.
-                        //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_Enviar_Documento_Firmar", "Enviar documento"), ("opcion_Recibir_Registro_Flow", "Proceso de registro") };
-                        //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
+                case "":
+                    _receivedMessages.Add("Inicio");
 
-                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_configurar", "Configurar") };
-                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Soy Timbrame Bot, ¿En que puedo ayudarte?", "Selecciona opción", "Hay 2 opciones", _botones);
-                        
-                        _receivedMessages.Add("Mensaje: " + userMessage + " De: " + fromPhoneNumber);
+                    if (userMessage == GetOldUserMessage(fromPhoneNumber))
+                        break;
+
+                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¡Hola!");
+
+                    _receivedMessages.Add("Mensaje inicial: " + messageStatus);
+                    messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, null);
+
+                    _receivedMessages.Add("Mensaje: " + userMessage + " De: " + fromPhoneNumber);
+                    _receivedMessages.Add(messageStatus);
+
+                    break;
+                case "opcion_Iniciar_Sesión":
+
+                    _receivedMessages.Add($"Text opcion_Iniciar_Sesión");
+
+                    if (string.IsNullOrWhiteSpace(userMessage) || GetOldUserMessage(fromPhoneNumber) == userMessage)
+                    {
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Por favor, envía un VALOR válido.");
+                        break;
+                    }
+
+                    (string, string)? compradorExistance = _manejoDeComprador.CompradorExisteKeys(userMessage);
+                    if (compradorExistance != null)
+                    {
+                        _receivedMessages.Add($"Comprador {compradorExistance.Value.Item1} existe");
+
+                        string añadirTelEstado = _manejoDeComprador.AñadirTeléfonoAComprador(fromPhoneNumber, compradorExistance.Value);
+                        _receivedMessages.Add(añadirTelEstado);
+
+                        if (añadirTelEstado.StartsWith("Teléfono"))
+                        {
+                            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"{fromPhoneNumber} registrado en usuario {compradorExistance.Value.Item1} ");
+                            _receivedMessages.Add(messageStatus);
+                        }
+                        UpdateNITComprador(fromPhoneNumber, compradorExistance.Value.Item2);
+                        UpdateNombreComprador(fromPhoneNumber, compradorExistance.Value.Item1);
+                        messageStatus = await MainMenuButton(fromPhoneNumber, "Usuario reconocido");
+                        _receivedMessages.Add("Usuario reconocido");
+                        _receivedMessages.Add(messageStatus);
+                    }
+                    else 
+                    {
+                        messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, "Usuario no reconocido");
+                        _receivedMessages.Add("Mensaje iniciar sesión no reconocido: " + messageStatus);
                     }
                     break;
-
-                case "opcion_Generar_Factura_Text"://Paso 5: El usuario da un nombre
-                                                   //Paso 6: Bot muestra lista: "encontré a:"
+                case "opcion_Generar_Factura_Text":
 
                     _receivedMessages.Add($"Text opcion_Generar_Factura_Text");
-                    if (!string.IsNullOrWhiteSpace(userMessage) && GetOldUserMessage(fromPhoneNumber)/*_oldUserMessage*/ != userMessage)
+                    if (string.IsNullOrWhiteSpace(userMessage) || GetOldUserMessage(fromPhoneNumber) == userMessage)
                     {
-                        (string, string)? phoneExistance = _manejoDeComprador.CompradorExisteKeys(userMessage);
-                        if (phoneExistance != null)
-                        {
-                            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"{phoneExistance.Value.Item1} - {phoneExistance.Value.Item2}\n¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
-                            //_lastMessageState = "opcion_Generar_Factura_Cliente";
-                            UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
-                            //_NITComprador = phoneExistance.Value.Item2;
-                            UpdateNITComprador(fromPhoneNumber, phoneExistance.Value.Item2);
-                            //_NombreComprador = phoneExistance.Value.Item1;
-                            UpdateNombreComprador(fromPhoneNumber, phoneExistance.Value.Item1);
-                            _receivedMessages.Add($"Text Nit Reconocido");
-                        }
-                        else
-                        {
-                            _receivedMessages.Add($"Text Nit No Reconocido");
-                            //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Este NIT no lo tienes registrado, por favor completa tu registro");
-                            //_receivedMessages.Add($"Simple message: {messageStatus}");
-                            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Persona física"), ("opcion_Registrar_Empresa_Flow", "Empresa"), ("opcion_Cancelar", "Cancelar") };
-                            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "NIT no registrado, por favor completa tu registro", "Selecciona opción", "2 opciones para registrar", _botones);
-                            _receivedMessages.Add($"Button message: {messageStatus}");
-                        }
-                        //messageStatus = await EnviarListaCurada(userMessage, fromPhoneNumber);
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Por favor, envía un VALOR válido.");
+                        break;
+                    }
+
+                    (string, string)? phoneExistance = _manejoDeComprador.CompradorExisteKeys(userMessage);
+                    if (phoneExistance != null)
+                    {
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"{phoneExistance.Value.Item1} - {phoneExistance.Value.Item2}\n¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+                        UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
+                        UpdateNombreComprador(fromPhoneNumber, phoneExistance.Value.Item1);
+                        UpdateNITComprador(fromPhoneNumber, phoneExistance.Value.Item2);
+                        _receivedMessages.Add($"Text Nit Reconocido");
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Por favor, envía un VALOR válido.");
+                        _receivedMessages.Add($"Text Nit No Reconocido");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Generar_Factura_Registrar_Persona_Flow", "Persona física"), ("opcion_Generar_Factura_Registrar_Empresa_Flow", "Empresa"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "NIT no registrado, por favor completa tu registro", "Selecciona opción", "2 opciones para registrar", _botones);
+                        _receivedMessages.Add($"Button message: {messageStatus}");
                     }
                     break;
-
                 case "opcion_Generar_Factura_Cliente":
                     _receivedMessages.Add($"Text opcion_Generar_Factura_Cliente");
-                    if (!string.IsNullOrWhiteSpace(userMessage) && GetOldUserMessage(fromPhoneNumber)/*_oldUserMessage*/ != userMessage)
+                    if (!string.IsNullOrWhiteSpace(userMessage) && GetOldUserMessage(fromPhoneNumber) != userMessage)
                     {
-
-                        List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> clientExistance = _manejoDeComprador.BuscarListaClientes(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber),/*_NombreComprador, _NITComprador,*/ userMessage );
+                        List<Flow_response_json_Model_1584870855544061_CrearCliente> clientExistance = _manejoDeComprador.BuscarListaClientes2(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber), userMessage );
                         _receivedMessages.Add($"Hay lista de clientes? {clientExistance.ToString()}");
-                        if (clientExistance.Any())
-                        {
-                            _receivedMessages.Add($"Text opcion_Generar_Factura_Cliente Cliente existe");
-                            var totalClients = clientExistance.Count;
-                            int totalSets = (int)Math.Ceiling(totalClients / 10.0);
-                            var listaSeccionesClientes = new List<(string, List<(string, string, string)>)>();
-                            for (int i = 0; i < totalSets; i++)
-                            {
-                                string setTitle = $"Set {i + 1}";
-
-                                var opciones = clientExistance
-                                    .Skip(i * 10) // Skip previous sets
-                                    .Take(10)     // Take up to 10 clients per set
-                                    .Select((client, index) => (
-                                        client.screen_0_NIT_4 ?? $"NIT_{i}_{index}", // OptionId (Fallback in case NIT is null)
-                                        (i * 10 + index + 1).ToString(), // OptionTitle (1, 2, 3, ...)
-                                        $"{client.screen_0_Primer_Nombre_0} {client.screen_0_Segundo_Nombre_1} {client.screen_0_Apellido_Paterno_2} {client.screen_0_Apellido_Materno_3}".Trim() // OptionDescription
-                                    ))
-                                    .ToList();
-
-                                listaSeccionesClientes.Add((setTitle, opciones));
-                            }
-
-                            listaSeccionesClientes.Add(("Other", new List<(string, string, string)>
-                            {
-                                ("opcion_Registrar_Cliente", "Registrar", "Elejir opción para registrar nuevo cliente")
-                            }));
-                            messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Lista de Clientes", "Seleccionar una coincidencia o mandar nombre diferente", $"Hay {totalClients} coincidencias", "Expandir opciones", listaSeccionesClientes);
-                        }
-                        else
+                        if (!clientExistance.Any()) // revisa si hay clientes en la lista
                         {
                             _receivedMessages.Add("No existe Cliente en comprador");
-                            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Registrar_Cliente"/*"opcion_Agregar_Clientes"*/, "Registrar Cliente"), ("opcion_Generar_Factura_Text", "Volver a intentar") };
+                            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Registrar_Cliente", "Registrar Cliente"), ("opcion_Generar_Factura_Cliente", "Volver a intentar"), ("opcion_Cancelar", "Reiniciar Proceso") };
                             messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "No encontré este NIT en tus clientes", "Selecciona opción", "Lo vaz a registrar?", _botones);
-                            UpdatetTipoProgramación(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
                             _receivedMessages.Add(messageStatus);
                             UpdateOldUserMessage(fromPhoneNumber, "No existe Cliente en comprador");
-                            return messageStatus;
+                            break;
                         }
+
+                        _receivedMessages.Add($"Text opcion_Generar_Factura_Cliente Cliente existe");
+                        // Filtro de clientes con NIT no vacío y sin duplicados
+                        var clientesConNIT = clientExistance
+                            .Where(c => !string.IsNullOrWhiteSpace(c.RegisterClient_Natural_NIT) || 
+                                !string.IsNullOrWhiteSpace(c.RegisterClient_Juridical_NIT))
+                            .GroupBy(c => 
+                                !string.IsNullOrWhiteSpace(c.RegisterClient_Natural_NIT)
+                                ? c.RegisterClient_Natural_NIT
+                                : c.RegisterClient_Juridical_NIT)
+                            .Select(g => g.First())
+                            .ToList();
+
+                        _receivedMessages.Add($"Hay lista de clientes con NIT? Count={clientesConNIT.Count}");
+
+                        // Validación: si no hay clientes con NIT, ofrecer registrar
+                        if (!clientesConNIT.Any())
+                        {
+                            _receivedMessages.Add("No existe Cliente con NIT en comprador");
+                            _botones = new List<(string ButtonId, string ButtonLabelText)>
+                            {
+                                ("opcion_Registrar_Cliente", "Registrar Cliente"), ("opcion_Generar_Factura_Cliente", "Volver a intentar"), ("opcion_Cancelar", "Reiniciar Proceso")
+                            };
+
+                            messageStatus = await _messageSendService.EnviarBotonInteractivo(
+                                fromPhoneNumber,
+                                "No encontré este NIT en tus clientes",
+                                "Selecciona opción",
+                                "Lo vaz a registrar?",
+                                _botones
+                            );
+
+                            _receivedMessages.Add(messageStatus);
+                            UpdateOldUserMessage(fromPhoneNumber, "No existe Cliente en comprador");
+                            break;
+                        }
+
+                        // Dividir clientes en sets de 10
+                        var totalClients = clientesConNIT.Count;
+                        int totalSetsF = (int)Math.Ceiling(totalClients / 10.0);
+                        var listaSeccionesClientes = new List<(string, List<(string, string, string)>)>();
+
+                        if (totalSetsF > 9)
+                        {
+                            _receivedMessages.Add("Demasiadas opciones");
+                            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Hay demasiadas opciones, favor de ser más específico");
+                            break;
+                        }
+
+                        // Generar secciones
+                        for (int i = 0; i < totalSetsF; i++)
+                        {
+                            string setTitle = $"Set {i + 1}";
+
+
+                            var opciones = clientesConNIT
+                                .Skip(i * 10)
+                                .Take(10)
+                                .Select((client, index) => {
+                                    // Obtener NIT prioritario
+                                    string nit = client.RegisterClient_Natural_NIT
+                                              ?? client.RegisterClient_Juridical_NIT
+                                              ?? $"NIT_{i}_{index}";
+
+                                    // Si es cliente natural
+                                    string nombreCompleto; if (!string.IsNullOrWhiteSpace(client.RegisterClient_Natural_Nombre))
+                                    {
+                                        nombreCompleto = string.Join(" ", new[]
+                                        {
+                                            client.RegisterClient_Natural_Nombre,
+                                            client.RegisterClient_Natural_Apellido_Paterno,
+                                            client.RegisterClient_Natural_Apellido_Materno
+                                        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                                    }
+                                    else
+                                    {
+                                        // Cliente jurídico
+                                        nombreCompleto = client.RegisterClient_Juridical_Razon_Social?.Trim() ?? "";
+                                    }
+
+                                    // Limitar a 72 caracteres
+                                    if (nombreCompleto.Length > 72)
+                                    {
+                                        nombreCompleto = nombreCompleto.Substring(0, 69).TrimEnd() + "...";
+                                    }
+
+                                    return (
+                                        nit,
+                                        (i * 10 + index + 1).ToString(),
+                                        nombreCompleto
+                                    );
+
+
+                                })
+                                .ToList();
+
+                            listaSeccionesClientes.Add((setTitle, opciones));
+                        }
+
+                        // Agregar opción de registrar cliente al final
+                        listaSeccionesClientes.Add((
+                            "Other",
+                            new List<(string, string, string)>
+                            {
+                                ("opcion_Registrar_Cliente", "Registrar", "Elegir opción para registrar nuevo cliente")
+                            }
+                        ));
+
+                        // Enviar la lista por WhatsApp
+                        messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Lista de Clientes", "Seleccionar una coincidencia o mandar nombre diferente", $"Hay {totalClients} coincidencias", "Expandir opciones", listaSeccionesClientes);
+                        _receivedMessages.Add(messageStatus);
                     }
                     else
                     {
                         messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Por favor, envía un VALOR válido.");
+                        _receivedMessages.Add("Valor no válido");
                     }
                     break;
 
-                case "opcion_Enviar_Documento_Firmar":
-                    if (userMessage == "documento")
+                case "opcion_Finalizar_Modificar_Cliente_Cambiar":
+                    _receivedMessages.Add($"Text opcion_Finalizar_Modificar_Cliente_Cambiar");
+                    if (!string.IsNullOrWhiteSpace(userMessage) && GetOldUserMessage(fromPhoneNumber) != userMessage)
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Aquí está el documento firmado");
-                        //_lastMessageState = "";// Reset del estado después de procesar
-                        UpdateLastMessageState(fromPhoneNumber, "");
-                        _receivedMessages.Add("Ruta opcion_Enviar_Documento_Firmar: " + messageStatus);
-                        messageStatus = await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://test-timbrame.azurewebsites.net/Ejemplo/24a8a905-f155-4726-a27f-1451a8bf5388.pdf", "DocumentoFirmado.pdf");
-                    }
-                    else { messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Eso no es documento"); }
-                    break;
+                        List<Flow_response_json_Model_1584870855544061_CrearCliente> clientExistance = _manejoDeComprador.BuscarListaClientes2(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber), userMessage);
+                        _receivedMessages.Add($"Hay lista de clientes? {clientExistance.ToString()}");
+                        if (!clientExistance.Any()) // revisa si hay clientes en la lista
+                        {
+                            _receivedMessages.Add("No existe Cliente en comprador");
+                            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Factura", "Regresar"), ("opcion_Finalizar_Modificar_Cliente_Cambiar", "Volver a intentar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "No encontré este NIT en tus clientes", "Selecciona opción", "No puedes registrar aquí", _botones);
+                            _receivedMessages.Add(messageStatus);
+                            UpdateOldUserMessage(fromPhoneNumber, "No existe Cliente en comprador");
+                            break;
+                        }
 
-                case "ID_De_Nombre"://Paso 9: El bot recibe mensaje progra
-                                    //Paso 8: Bot: muestra lista de productos
-                    if (userMessage.StartsWith("prog", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Programación_Aplicaciones", "aplicaciones"), ("opcion_Programación_videojuegos", "videojuegos"), };
-                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Productos de", "Programación", "de", _botones);
+                        _receivedMessages.Add($"Text opcion_Finalizar_Modificar_Cliente_Cambiar Cliente existe");
+                        // Filtro de clientes con NIT no vacío y sin duplicados
+                        var clientesConNIT = clientExistance
+                            .Where(c => !string.IsNullOrWhiteSpace(c.RegisterClient_Natural_NIT) ||
+                                !string.IsNullOrWhiteSpace(c.RegisterClient_Juridical_NIT))
+                            .GroupBy(c =>
+                                !string.IsNullOrWhiteSpace(c.RegisterClient_Natural_NIT)
+                                ? c.RegisterClient_Natural_NIT
+                                : c.RegisterClient_Juridical_NIT)
+                            .Select(g => g.First())
+                            .ToList();
+
+                        _receivedMessages.Add($"Hay lista de clientes con NIT? Count={clientesConNIT.Count}");
+
+
+                        if (!clientesConNIT.Any())
+                        {
+                            _receivedMessages.Add("No existe Cliente con NIT en comprador");
+                            _botones = new List<(string ButtonId, string ButtonLabelText)>
+                            {
+                                ("opcion_Finalizar_Modificar_Factura", "Regresar"), ("opcion_Finalizar_Modificar_Cliente_Cambiar", "Volver a intentar"), ("opcion_Cancelar", "Reiniciar Proceso")
+                            };
+
+                            messageStatus = await _messageSendService.EnviarBotonInteractivo(
+                                fromPhoneNumber, "No encontré este NIT en tus clientes",
+                                "Selecciona opción", "No puedes registrar aquí", _botones
+                            );
+
+                            _receivedMessages.Add(messageStatus);
+                            UpdateOldUserMessage(fromPhoneNumber, "No existe Cliente en comprador");
+                            break;
+                        }
+
+                        // Dividir clientes en sets de 10
+                        var totalClients = clientesConNIT.Count;
+                        int totalSetsF = (int)Math.Ceiling(totalClients / 10.0);
+                        var listaSeccionesClientes = new List<(string, List<(string, string, string)>)>();
+
+                        if (totalSetsF > 9)
+                        {
+                            _receivedMessages.Add("Demasiadas opciones");
+                            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Hay demasiadas opciones, favor de ser más específico");
+                            break;
+                        }
+
+                        // Generar secciones
+                        for (int i = 0; i < totalSetsF; i++)
+                        {
+                            string setTitle = $"Set {i + 1}";
+
+
+                            var opciones = clientesConNIT
+                                .Skip(i * 10)
+                                .Take(10)
+                                .Select((client, index) => {
+                                    // Obtener NIT prioritario
+                                    string nit = client.RegisterClient_Natural_NIT
+                                              ?? client.RegisterClient_Juridical_NIT
+                                              ?? $"NIT_{i}_{index}";
+
+                                    // Si es cliente natural
+                                    string nombreCompleto; if (!string.IsNullOrWhiteSpace(client.RegisterClient_Natural_Nombre))
+                                    {
+                                        nombreCompleto = string.Join(" ", new[]
+                                        {
+                                            client.RegisterClient_Natural_Nombre,
+                                            client.RegisterClient_Natural_Apellido_Paterno,
+                                            client.RegisterClient_Natural_Apellido_Materno
+                                        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                                    }
+                                    else
+                                    {
+                                        // Cliente jurídico
+                                        nombreCompleto = client.RegisterClient_Juridical_Razon_Social?.Trim() ?? "";
+                                    }
+
+                                    // Limitar a 72 caracteres
+                                    if (nombreCompleto.Length > 72)
+                                    {
+                                        nombreCompleto = nombreCompleto.Substring(0, 69).TrimEnd() + "...";
+                                    }
+
+                                    return (
+                                        nit,
+                                        (i * 10 + index + 1).ToString(),
+                                        nombreCompleto
+                                    );
+
+
+                                })
+                                .ToList();
+
+                            listaSeccionesClientes.Add((setTitle, opciones));
+                        }
+
+                        // Agregar opción de registrar cliente al final
+                        /*listaSeccionesClientes.Add((
+                            "Other",
+                            new List<(string, string, string)>
+                            {
+                                ("opcion_Registrar_Cliente", "Registrar", "Elegir opción para registrar nuevo cliente")
+                            }
+                        ));*/
+
+                        // Enviar la lista por WhatsApp
+                        messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Lista de Clientes", "Seleccionar una coincidencia o mandar nombre diferente", $"Hay {totalClients} coincidencias", "Expandir opciones", listaSeccionesClientes);
+                        _receivedMessages.Add(messageStatus);
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "No tenemos ese producto");
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Por favor, envía un VALOR válido.");
+                        _receivedMessages.Add("Valor no válido");
                     }
                     break;
+                case "opcion_Agregar_Clientes":// Corregir e implementar ListaDeCoincidenciasCompradores
 
-                case "opcion_Programación_Aplicaciones": case "opcion_Programación_videojuegos": //Paso 13: El bot recibe mensaje cantidad
-                                                                                                 //Paso 14: Bot: muestra lista de productos
-                    //_montoFactura = userMessage;
-                    UpdateMontoFactura(fromPhoneNumber, userMessage);
-                    //_lastMessageState = "Mandando lista";
-                    UpdateLastMessageState(fromPhoneNumber, "Mandando lista");
-                    var listaSecciones = new List<(string, List<(string, string, string)>)>
-                    {
-                        ("CFDI para factura", new List<(string, string, string)>
-                        {
-                            ("Gastos_en_General_ID", "1", "Gastos en general"),
-                            ("Adquisicion_de_Mercancia_ID", "2", "Adquisicion de mercancia"),
-                            ("Honorarios_Medicos_Dentales_y_Gastos_Hospitalarios_ID", "3", "Honorarios medicos, dentales y gastos hospitalarios"),
-                            ("Pagos_Por_Servicios_Educativos_ID", "4", "Pagos por servicios educativos"),
-                            ("Devoluciones_Descuentos_o_Bonificaciones_ID", "5", "Devoluciones, descuentos o bonificaciones")
-                        }),
-                        ("Seccion 2", new List<(string, string, string)>
-                        {
-                            ("No_Seleccionar_1", "No seleccionar", "Esto está para que no lo selecciones"),
-                            ("No_Seleccionar_2", "No seleccionar", "NO LO ELIJAS")
-                        })
-                    };
-                    messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Uso de CFDI", "Favor de indicar el uso de CFDI para esta factura", "Hay 5 opciones", "Expandir opciones",listaSecciones);
+                    (string, string)? compradorExistanceCli = _manejoDeComprador.CompradorExisteKeys(userMessage);
 
-                    //await _messageSendService.EnviarTexto(fromPhoneNumber, "Marca el número para definir el uso de CFDI para esta factura");
-                    //await _messageSendService.EnviarTexto(fromPhoneNumber, "1 para Gastos en general \n2 para Adquisición de mercancía \n3 para Honorarios médicos, dentales y gastos hospitalarios \n4 para Pagos por servicios educativos (colegiaturas) \n5 para Devoluciones, descuentos o bonificaciones");
-                    //_lastMessageState = "ruta_Factura_programación_3";
-                    UpdateLastMessageState(fromPhoneNumber, "ruta_Factura_programación_3");
-                    break;
-                case "opcion_Agregar_Clientes":
-                    if(_manejoDeComprador.CompradorExiste(userMessage, userMessage))
+                    if (compradorExistanceCli != null)
                     {
-                        UpdateNITComprador(fromPhoneNumber, userMessage);
-                        UpdateNombreComprador(fromPhoneNumber, userMessage);
+                        UpdateNITComprador(fromPhoneNumber, compradorExistanceCli.Value.Item2);
+                        UpdateNombreComprador(fromPhoneNumber, compradorExistanceCli.Value.Item1);
+                        UpdateLastMessageState(fromPhoneNumber, "opcion_Agregar_Clientes");
                         messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1584870855544061", $"opcionAgregarClienteFlow{fromPhoneNumber}", "published", $"Registrando Cliente", "Registrar");
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> {("opcion_Agregar_Clientes", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Nombre o NIT de comprador no reconocido", "Selecciona", "Hay 2 opciones", _botones);
                     }
                         break;
                 case "opcion_Modificar_Clientes":
-                    if (_manejoDeComprador.CompradorExiste(userMessage, userMessage))
+                    (string, string)? compradorExistanceModCli = _manejoDeComprador.CompradorExisteKeys(userMessage);
+
+                    if (compradorExistanceModCli != null)
                     {
-                        UpdateNITComprador(fromPhoneNumber, userMessage);
-                        UpdateNombreComprador(fromPhoneNumber, userMessage);
-                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Modificar_Clientes_Persona_Natural", "Natural"), ("opcion_Modificar_Clientes_Persona_Juridica", "Jurídica") };
+                        UpdateNITComprador(fromPhoneNumber, compradorExistanceModCli.Value.Item2);
+                        UpdateNombreComprador(fromPhoneNumber, compradorExistanceModCli.Value.Item1);
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Modificar_Clientes_Persona_Natural", "Natural"), ("opcion_Modificar_Clientes_Persona_Juridica", "Jurídica"), ("opcion_Cancelar", "Cancelar") };
                         messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que tipo de persona es tu cliente?", "Selecciona opción", "Hay 2 opciones", _botones);
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a int
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Agregar_Clientes", "Crear"), ("opcion_Modificar_Clientes", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Nombre o NIT de cliente no reconocido", "O no existe en comprador", "Hay 3 opciones", _botones);
                     }
                     break;
                 case "opcion_Modificar_Clientes_Persona_Natural":
@@ -703,7 +1519,10 @@ namespace WhatsAppPresentacionV6.Controllers
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Modificar_Clientes_Persona_Natural", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Nombre o NIT de cliente no reconocido", "O no existe en comprador", "Hay 2 opciones", _botones);
                     }
                     UpdateLastMessageState(fromPhoneNumber, "opcion_Modificar_Clientes_Persona_Natural");
                     break;
@@ -714,34 +1533,216 @@ namespace WhatsAppPresentacionV6.Controllers
                     }
                     else
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Nombre o NIT no reconocido, favor de volver a intentar");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Modificar_Clientes_Persona_Juridica", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Nombre o NIT de cliente no reconocido", "O no existe en comprador", "Hay 2 opciones", _botones);
                     }
                     UpdateLastMessageState(fromPhoneNumber, "opcion_Modificar_Clientes_Persona_Juridica");
                     break;
                 case "opcion_Configurar_Productos_Modificar":
-                    if (_productos.Any(c => c.Agregar_Producto_Nombre.Contains(userMessage, StringComparison.OrdinalIgnoreCase)) || _productos.Any(c => c.Agregar_Producto_Codigo.Contains(userMessage, StringComparison.OrdinalIgnoreCase)))
+                    _receivedMessages.Add($"Text opcion_Configurar_Productos_Modificar");
+                    if (string.IsNullOrWhiteSpace(userMessage) || !_productos.Any(c =>
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Nombre) && c.Agregar_Producto_Nombre.Contains(userMessage, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Codigo) && c.Agregar_Producto_Codigo.Contains(userMessage, StringComparison.OrdinalIgnoreCase))))
                     {
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Producto encontrado");
-                        UpdateRestart(fromPhoneNumber);
+                        _receivedMessages.Add("opcion_Configurar_Productos_Modificar, producto no encontrado");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Productos_agregar", "Crear"), ("opcion_Configurar_Productos_Modificar", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado, ¿Deseas reintentar con otro nombre?", "¿o crear un producto?", "Reintentar o Crear", _botones);
+                        break;
                     }
-                    else
-                    {
 
-                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Producto no encontrado");
-                        UpdateRestart(fromPhoneNumber);
+                    _receivedMessages.Add($"Producto a mod:{userMessage}");
+
+                    string productoPiesaMod = userMessage.ToLower();
+
+                    var productosFiltradosMod = _productos.Where(p =>
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Nombre) && p.Agregar_Producto_Nombre.ToLower().Contains(productoPiesaMod)) ||
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) && p.Agregar_Producto_Codigo.ToLower().Contains(productoPiesaMod)))
+                        .ToList();
+
+                    if (!productosFiltradosMod.Any())
+                    {
+                        _receivedMessages.Add("opcion_Configurar_Productos_Modificar, producto no encontrado");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Configurar_Productos_agregar", "Crear"), ("opcion_Configurar_Productos_Modificar", "Reintentar"), ("opcion_Cancelar", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado", "¿Deseas reintentar con otro nombre o crear un producto?", "Reintentar o Crear", _botones);
+                        break;
                     }
+
+                    int totalSetsMod = (int)Math.Ceiling(productosFiltradosMod.Count / 10.0);
+                    var listaSeccionesProductosMod = new List<(string, List<(string, string, string)>)>();
+
+                    if (totalSetsMod > 9)
+                    {
+                        _receivedMessages.Add("Demasiadas opciones");
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Hay demasiadas opciones, favor de ser más específico");
+                        break;
+                    }
+
+                    for (int i = 0; i < totalSetsMod; i++)
+                    {
+                        string setTitle = $"Set {i + 1}";
+
+                        var opciones = productosFiltradosMod
+                                .Skip(i * 10)
+                                .Take(10)
+                                .Select((producto, index) => (
+                                    producto.Agregar_Producto_Codigo ?? $"{index}", // OptionId
+                                    (i * 10 + index + 1).ToString(), // OptionTitle
+                                    producto.Agregar_Producto_Nombre ?? "Producto sin nombre" // OptionDescription
+                                ))
+                                .ToList();
+                        listaSeccionesProductosMod.Add((setTitle, opciones));
+                    }
+
+                    listaSeccionesProductosMod.Add(("Otra opción", new List<(string, string, string)>{
+                        ("opcion_Configurar_Productos_agregar", "Agregar", "Crear Producto")}));
+                    if (productosFiltradosMod.Any())
+                    {
+                        messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Productos encontrados", "Selecciona un producto",
+                        $"Coincidencias: {productosFiltradosMod.Count}", "Ver productos", listaSeccionesProductosMod);
+                    }
+
+                    UpdateLastMessageState(fromPhoneNumber, "opcion_Configurar_Productos_Modificar");
+
+                    //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Producto encontrado");
+                        //UpdateRestart(fromPhoneNumber);
+                    break;
+                case "opcion_Anadir_Producto":
+                    _receivedMessages.Add($"Text opcion_Anadir_Producto");
+                    if (string.IsNullOrWhiteSpace(userMessage) || !_productos.Any(c =>
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Nombre) && c.Agregar_Producto_Nombre.Contains(userMessage, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Codigo) && c.Agregar_Producto_Codigo.Contains(userMessage, StringComparison.OrdinalIgnoreCase))))
+                    {
+                        _receivedMessages.Add($"Producto no encontrado");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Anadir_Producto_agregar", "Crear"), ("opcion_Anadir_Producto", "Reintentar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado, ¿Deseas reintentar con otro nombre?", "¿o crear un producto?", "Reintentar o Crear", _botones);
+                        break;
+                    }
+
+                    _receivedMessages.Add($"Producto:{userMessage}");
+
+                    string productoPiesa = userMessage.ToLower();
+
+                    var productosFiltrados = _productos.Where(p =>
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Nombre) && p.Agregar_Producto_Nombre.ToLower().Contains(productoPiesa)) ||
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) && p.Agregar_Producto_Codigo.ToLower().Contains(productoPiesa)))
+                        .ToList();
+                    if (!productosFiltrados.Any())
+                    {
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Anadir_Producto_agregar", "Crear"), ("opcion_Anadir_Producto", "Reintentar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado", "¿Deseas reintentar con otro nombre o crear un producto?", "Reintentar o Crear", _botones);
+                        break;
+                    }
+
+                    int totalSets = (int)Math.Ceiling(productosFiltrados.Count / 10.0);
+                    var listaSeccionesProductos = new List<(string, List<(string, string, string)>)>();
+
+                    if (totalSets > 9)
+                    {
+                        _receivedMessages.Add("Demasiadas opciones");
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Hay demasiadas opciones, favor de ser más específico");
+                        break;
+                    }
+
+                    for (int i = 0; i < totalSets; i++)
+                    {
+                        string setTitle = $"Set {i + 1}";
+
+                        var opciones = productosFiltrados
+                                .Skip(i * 10)
+                                .Take(10)
+                                .Select((producto, index) => (
+                                    producto.Agregar_Producto_Codigo ?? $"{index}", // OptionId
+                                    (i * 10 + index + 1).ToString(), // OptionTitle
+                                    producto.Agregar_Producto_Nombre ?? "Producto sin nombre" // OptionDescription
+                                ))
+                                .ToList();
+                        listaSeccionesProductos.Add((setTitle, opciones));
+                    }
+
+                    listaSeccionesProductos.Add(("Otra opción", new List<(string, string, string)>{
+                        ("opcion_Configurar_Productos_agregar", "Agregar", "Crear Producto")}));
+                    if (productosFiltrados.Any())
+                    {
+                        messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Productos encontrados", "Selecciona un producto",
+                        $"Coincidencias: {productosFiltrados.Count}", "Ver productos", listaSeccionesProductos);
+                    }
+
+                    UpdateLastMessageState(fromPhoneNumber, "opcion_Anadir_Producto");
+                    break;
+                case "opcion_Finalizar_Modificar_Productos_Anadir":
+                    _receivedMessages.Add($"Text opcion_Finalizar_Modificar_Productos_Anadir");
+                    if (string.IsNullOrWhiteSpace(userMessage) || !_productos.Any(c =>
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Nombre) && c.Agregar_Producto_Nombre.Contains(userMessage, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(c.Agregar_Producto_Codigo) && c.Agregar_Producto_Codigo.Contains(userMessage, StringComparison.OrdinalIgnoreCase))))
+                    {
+                        _receivedMessages.Add($"Producto no encontrado");
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> {("opcion_Finalizar_Modificar_Productos_Anadir", "Reintentar"), ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado, ¿Deseas reintentar con otro nombre?", "Hay 2 opciones", "Reintentar o Crear", _botones);
+                        break;
+                    }
+
+                    _receivedMessages.Add($"Producto:{userMessage}");
+
+                    string productoPiesaMod2 = userMessage.ToLower();
+
+                    var productosFiltradosMod2 = _productos.Where(p =>
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Nombre) && p.Agregar_Producto_Nombre.ToLower().Contains(productoPiesaMod2)) ||
+                        (!string.IsNullOrWhiteSpace(p.Agregar_Producto_Codigo) && p.Agregar_Producto_Codigo.ToLower().Contains(productoPiesaMod2)))
+                        .ToList();
+                    if (!productosFiltradosMod2.Any())
+                    {
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Reintentar"), ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                        messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Producto no encontrado", "¿Deseas reintentar con otro nombre?", "Hay 3 opciones", _botones);
+                        break;
+                    }
+
+                    int totalSetsMod2 = (int)Math.Ceiling(productosFiltradosMod2.Count / 10.0);
+                    var listaSeccionesProductosMod2 = new List<(string, List<(string, string, string)>)>();
+
+                    if (totalSetsMod2 > 9)
+                    {
+                        _receivedMessages.Add("Demasiadas opciones");
+                        messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Hay demasiadas opciones, favor de ser más específico");
+                        break;
+                    }
+
+                    for (int i = 0; i < totalSetsMod2; i++)
+                    {
+                        string setTitle = $"Set {i + 1}";
+
+                        var opciones = productosFiltradosMod2
+                                .Skip(i * 10)
+                                .Take(10)
+                                .Select((producto, index) => (
+                                    producto.Agregar_Producto_Codigo ?? $"{index}", // OptionId
+                                    (i * 10 + index + 1).ToString(), // OptionTitle
+                                    producto.Agregar_Producto_Nombre ?? "Producto sin nombre" // OptionDescription
+                                ))
+                                .ToList();
+                        listaSeccionesProductosMod2.Add((setTitle, opciones));
+                    }
+
+                    listaSeccionesProductosMod2.Add(("Otra opción", new List<(string, string, string)>{
+                        ("opcion_Configurar_Productos_agregar", "Agregar", "Crear Producto")}));
+                    if (productosFiltradosMod2.Any())
+                    {
+                        messageStatus = await _messageSendService.EnviarListaDeOpciones(fromPhoneNumber, "Productos encontrados", "Selecciona un producto",
+                        $"Coincidencias: {productosFiltradosMod2.Count}", "Ver productos", listaSeccionesProductosMod2);
+                    }
+
+                    UpdateLastMessageState(fromPhoneNumber, "opcion_Finalizar_Modificar_Productos_Anadir");
+
                     break;
                 default:
                     await _messageSendService.EnviarTexto(fromPhoneNumber, "Accion no reconocida");
-                    //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
-
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_configurar", "Configurar") };
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Soy Timbrame Bot, ¿En que puedo ayudarte?", "Selecciona opción", "Hay 2 opciones", _botones);
+                    messageStatus = await MainMenuButton(fromPhoneNumber, null);
                     break;
             }
-            if (userMessage != GetOldUserMessage(fromPhoneNumber)/*_oldUserMessage*/) { UpdateOldUserMessage(fromPhoneNumber, userMessage);/*_oldUserMessage = userMessage;*/ }
+            if (userMessage != GetOldUserMessage(fromPhoneNumber)) 
+                UpdateOldUserMessage(fromPhoneNumber, userMessage ?? "0");// OldUserMessage se vuelve el último mensaje o 0 si fue null
             _receivedMessages.Add($"Retornando: {messageStatus}");
-            UpdateOldUserMessage(fromPhoneNumber, "0");
+            UpdateOldUserMessage(fromPhoneNumber, "0");// eliminar más adelante
             return messageStatus;
         }
         private async Task<string> HandleEncryptedInteractiveFlowMessage(WebHookResponseModel webhookData)
@@ -827,44 +1828,6 @@ namespace WhatsAppPresentacionV6.Controllers
             //Aqui va la lógica de manejar documentos recibidos
             return "Documento";
         }
-        private async Task<string> EnviarListaCurada(string userMessage, string fromPhoneNumber)
-        {
-            string messageStatus = "";
-            var listaCurada = _nombres
-                .Where(r => r.StartsWith(userMessage, StringComparison.OrdinalIgnoreCase))
-                .Take(3).ToList();//Compara el nombre recibido sin importar mayusculas y regresa 3 nombres. 
-            //El boton interactivo que se usa en esta prueba está limitado a 3 botonoe, cada botón con 20 caracteres incluyendo espacios
-
-            if (listaCurada.Any())//Revisa si el nombre tiene coincidencias
-            {
-                //Construye la lista de botones, cada boton tiene un {id} y un {body_text}
-                _botones = listaCurada.Select(nombre =>
-                {
-                    int index = _nombres.IndexOf(nombre);
-                    string id = _idNombres[index];
-                    return (id, nombre);
-                }).ToList();
-
-                //Construye el JSON que se usa para enviar el botón interactivo y lo manda por la función EnviarBotonInteractivo del objeto _messageSendService
-                messageStatus = await _messageSendService.EnviarBotonInteractivo(
-                    fromPhoneNumber,
-                    "Selecciona un nombre",
-                    "Opciones encontradas",
-                    "Haz clic en uno de los nombres:",
-                    _botones
-                    );
-                _receivedMessages.Add("Lista curada: " + messageStatus);
-                //_lastMessageState = "ruta_Factura_Nombre_Elegido";
-                UpdateLastMessageState(fromPhoneNumber, "ruta_Factura_Nombre_Elegido");
-            }
-            else
-            {
-                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "No hay coincidencias.");
-                _receivedMessages.Add("Sin coincidencias: " + messageStatus);
-            }
-            _receivedMessages.Add("Empty 1" + messageStatus);
-            return messageStatus;
-        }
         //Normalizamos el número si es mexicano
         private string NormalizarNumeroMexico(string numeroTelefono)
         {
@@ -873,26 +1836,6 @@ namespace WhatsAppPresentacionV6.Controllers
                 return "52" + numeroTelefono.Substring(3); // Remover el tercer carácter que posiblemente representa es hecho de ser un mensaje de whatsapp business
             }
             return numeroTelefono;
-        }
-        public async Task<string> SendInvoiceMessagesAsync(string fromPhoneNumber/*, string userMessage*/)
-        {
-            // Send the initial "Generando factura" message
-            await _messageSendService.EnviarTexto(fromPhoneNumber, "Generando factura");
-
-            // Send detailed invoice information
-            await _messageSendService.EnviarTexto(fromPhoneNumber, $"Facturando a {GetUsuarioAUsarID(fromPhoneNumber)/*_usuarioAUsar*/} ({GetUsuarioAUsarID(fromPhoneNumber)/*_usuarioAUsarID*/}), el producto {GetTipoProgramacion(fromPhoneNumber)/*_tipoProgramación*/}, con la cantidad a cobrar antes de impuestos {GetMontoFactura(fromPhoneNumber)/*_montoFactura*/}, con el uso de CFDI {GetUsoCFDI(fromPhoneNumber)/*_usoCFDI*/}");
-
-            // Save the old user message (optional, depends on your logic)
-            //_oldUserMessage = userMessage;
-
-            // Send PDF document via URL
-            await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://test-timbrame.azurewebsites.net/Ejemplo/24a8a905-f155-4726-a27f-1451a8bf5388.pdf", "Factura.pdf");
-            // Reset the last message state
-            //_lastMessageState = "";
-            UpdateLastMessageState(fromPhoneNumber, "");
-            // Send XML document via URL
-            return await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://test-timbrame.azurewebsites.net/Ejemplo/24a8a905-f155-4726-a27f-1451a8bf5388.xml", "Factura.xml");
-
         }
         private async Task<string> HandleInteractiveFlowMessage(WebHookResponseModel webhookData, string fromPhoneNumber)
         {
@@ -906,48 +1849,22 @@ namespace WhatsAppPresentacionV6.Controllers
                 using (JsonDocument doc = JsonDocument.Parse(jsonString))
                 {
                     var root = doc.RootElement;
-                    if (root.TryGetProperty("Registrar_Persona_Fisica_Nombre_0", out _) && root.TryGetProperty("Registrar_Persona_Fisica_Apellido_Paterno_1", out _) && root.TryGetProperty("Registrar_Persona_Fisica_Apellido_Materno_2", out _))
+                    if (root.TryGetProperty("Registrar_Persona_Fisica_Nombre_0", out _) && root.TryGetProperty("Registrar_Persona_Fisica_Apellido_Paterno_1", out _))
                     {
                         _receivedMessages.Add("Detected Model 637724539030495, Registrar Persona Física Simple");
                         messageStatus = await HandleInteractiveFlowMessageRegistraPersonaFísica(JsonSerializer.Deserialize<Flow_response_json_Model_637724539030495_RegistrarPersonaFisicaSimple>(jsonString), fromPhoneNumber);
                         return messageStatus;
                     }
-                    else if (root.TryGetProperty("Registrar_Empresa_Nombre_0", out _) && root.TryGetProperty("Registrar_Empresa_NIT_1", out _) && root.TryGetProperty("Registrar_Empresa_Digito_Verificacin_1", out _))
+                    else if (root.TryGetProperty("Registrar_Empresa_Nombre_0", out _) && root.TryGetProperty("Registrar_Empresa_NIT_1", out _))
                     {
                         _receivedMessages.Add("Detected Model 1187351356327089, Registrar Empresa");
                         messageStatus = await HandleInteractiveFlowMessageRegistraEmpresa(JsonSerializer.Deserialize<Flow_response_json_Model_1187351356327089_RegistrarEmpresa>(jsonString), fromPhoneNumber);
                         return messageStatus;
                     }
-                    else if (root.TryGetProperty("screen_0_Nombres_0", out _) && root.TryGetProperty("screen_1_NIT_0", out _) && root.TryGetProperty("screen_0_Apellidos_1", out _))
+                    else if (root.TryGetProperty("Observaciones_y_Mail_ID", out _))
                     {
-                        _receivedMessages.Add("Detected Model 568198656271468, Regístrate");
-                        messageStatus = await HandleInteractiveFlowMessageRegistrate(JsonSerializer.Deserialize<Flow_response_json_Model_568198656271468_Registrate>(jsonString), fromPhoneNumber);
-                        return messageStatus;
-                    }
-                    else if (root.TryGetProperty("screen_0_Primer_Nombre_0", out _) && root.TryGetProperty("screen_0_NIT_4", out _) && root.TryGetProperty("screen_1_Apellido_Paterno_2", out _))
-                    {
-                        _receivedMessages.Add("Detected Model 1877921042740421, Factura Colombia");
-                        messageStatus = await HandleInteractiveFlowMessageFacturaColombia(JsonSerializer.Deserialize<Flow_response_json_Model_1877921042740421_FacturaColombia>(jsonString), fromPhoneNumber);
-                    }
-                    else if (root.TryGetProperty("screen_0_Nombre_0", out _) && root.TryGetProperty("screen_0_NIT_1", out _) && root.TryGetProperty("screen_0_NIT_2", out _))
-                    {
-                        _receivedMessages.Add("Detected Model 1277233923341533, Comprobante NIT Cliente y Combrador");
-                        messageStatus = await HandleInteractiveFlowMessageComprobanteNitClienteYCombrador(JsonSerializer.Deserialize<Flow_response_json_Model_1277233923341533_ComprobanteNitClienteYCombrador>(jsonString), fromPhoneNumber);
-                        //_lastMessageState = "";
-                        //_oldUserMessage = "";
-                        return messageStatus;
-                    }
-                    else if (root.TryGetProperty("screen_0_Telfono_0", out _) && root.TryGetProperty("screen_0_Direccin_1", out _) && root.TryGetProperty("screen_0_Monto_2", out _) && root.TryGetProperty("screen_0_Descripcin_3", out _))
-                    {
-                        _receivedMessages.Add("Detected Model 682423707677994, Información Factura");
-                        messageStatus = await HandleInteractiveFlowMessageInformaciónFactura(JsonSerializer.Deserialize<Flow_response_json_Model_682423707677994_InformacionFactura>(jsonString), fromPhoneNumber);
-                        return messageStatus;
-
-                    }
-                    else if (root.TryGetProperty("screen_0_Primer_Nombre_0", out _) && root.TryGetProperty("screen_0_Apellido_Paterno_2", out _) && root.TryGetProperty("screen_0_Apellido_Materno_3", out _) && root.TryGetProperty("screen_0_NIT_4", out _))
-                    {
-                        _receivedMessages.Add("Detected Model 1297640437985053, Información del clente");
-                        messageStatus = await HandleInteractiveFlowMessageInformaciónDelCliente(JsonSerializer.Deserialize<Flow_response_json_Model_1297640437985053_InformacionDelCliente>(jsonString), fromPhoneNumber);
+                        _receivedMessages.Add("Detected Model 1414924193269074, Información Factura");
+                        messageStatus = await HandleInteractiveFlowMessageObservacionesYMail(JsonSerializer.Deserialize<Flow_response_json_Model_1414924193269074_Observaciones_y_Mail>(jsonString), fromPhoneNumber);
                         return messageStatus;
                     }
                     else if (root.TryGetProperty("RegistraCliente_Tipo_Cliente", out _))
@@ -974,320 +1891,103 @@ namespace WhatsAppPresentacionV6.Controllers
                         messageStatus = await HandleInteractiveFlowCearProducto(JsonSerializer.Deserialize<Flow_response_json_Model_1142951587576244_Crear_Producto>(jsonString), fromPhoneNumber);
                         return messageStatus;
                     }
+                    else if (root.TryGetProperty("Modificar_Producto_Codigo", out _))
+                    {
+                        _receivedMessages.Add("Detected Model 572042871927108, Modificar Producto");
+                        messageStatus = await HandleInteractiveFlowModificarProducto(JsonSerializer.Deserialize<Flow_response_json_Model_572042871927108_Modificar_Producto>(jsonString), fromPhoneNumber);
+                        return messageStatus;
+                    }
+                    else if (root.TryGetProperty("PUyC_Cantidad", out _))
+                    {
+                        _receivedMessages.Add("Detected Model 624251470432760 or 651685330992197, Crear Producto");
+                        messageStatus = await HandleInteractiveFlowPrecioUnitarioyCantidad(JsonSerializer.Deserialize<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad>(jsonString), fromPhoneNumber);
+                        return messageStatus;
+
+                    }
+                    else if (root.TryGetProperty("Registros_DIAN_Prefijo_0", out _))
+                    {
+                        _receivedMessages.Add("Detected Model 1232523891647775, Registro DIAN");
+                        messageStatus = await HandleInteractiveFlowRegistroDIAN(JsonSerializer.Deserialize<Flow_response_json_Model_1232523891647775_Registro_DIAN>(jsonString), fromPhoneNumber);
+                        return messageStatus;
+                    }
                     else
                     {
-                        
+
                         messageStatus = "Unknown response format";
                         _receivedMessages.Add("Flow Error: Unknown response format");
                         throw new Exception("Unknown response format.");
                     }
                 }
 
-                //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
-                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_configurar", "Configurar") };
-                _receivedMessages.Add("Button Created");
-                messageStatus = messageStatus + "\n" + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Soy Timbrame Bot, ¿En que puedo ayudarte?", "Selecciona opción", "Hay 2 opciones", _botones);
+                messageStatus = await MainMenuButton(fromPhoneNumber, null);
+
                 _receivedMessages.Add("Button Sent");
                 _receivedMessages.Add($"Messages status: {messageStatus}");
-                //_lastMessageState = "";
                 UpdateLastMessageState(fromPhoneNumber, "");
-                //_oldUserMessage = "";
                 UpdateOldUserMessage(fromPhoneNumber, "");
                 return messageStatus;
             }
             catch (Exception parseEx)
             {
-                _receivedMessages.Add($"Error parsing response_json: {parseEx.Message}");
+                _receivedMessages.Add($"Error parsing response_json: {parseEx.Message}. Original JSON: {webhookData.entry[0].changes[0].value.messages[0].interactive.nfm_reply.response_json}");
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Error: reiniciando");
+                UpdateRestart(fromPhoneNumber);
                 return $"Error parsing response_json: {parseEx.Message}";
             }
         }
-        private async Task<string> HandleInteractiveFlowMessageRegistrate(Flow_response_json_Model_568198656271468_Registrate parsedResponseJson, string fromPhoneNumber)
+        /*private async Task<string> HandleInteractiveFlowMessageInformaciónFactura(Flow_response_json_Model_682423707677994_InformacionFactura parsedResponseJson, string fromPhoneNumber)
         {
-            _receivedMessages.Add("Parsed Regístrate response_json:");
-            _receivedMessages.Add(JsonSerializer.Serialize(parsedResponseJson, new JsonSerializerOptions { WriteIndented = true }));
-            //Mandar el Summary
-            string summary = $"*Resumen del Formulario Recibido:*\n" +
-                     $"*Nombre:* {parsedResponseJson.screen_0_Nombres_0} {parsedResponseJson.screen_0_Apellidos_1}\n"; 
-            /*if (parsedResponseJson.screen_0_Correo_2 != "UNKNOWN")
-                summary = summary + $"*Correo:* {parsedResponseJson.screen_0_Correo_2}\n";*/
-
-            summary = summary +/* $"*Teléfono:* {parsedResponseJson.screen_0_Telfono_3}\n" +*/
-                     $"*NIT:* {parsedResponseJson.screen_1_NIT_0} - {parsedResponseJson.screen_1_Digito_Verificacin_1}\n" +
-                     $"*Departamento:* {parsedResponseJson.screen_1_Departamento_3}\n Ciudad: {parsedResponseJson.screen_1_Ciudad_4}\n";
-
-            switch (parsedResponseJson.screen_0_Tipo_de_persona_4)
-            {
-                case "0_Persona_Jurídica_y_asimiladas":
-                    summary = summary + $"*Tipo de Persona:* Persona Jurídica y asimiladas\n";
-                    break;
-                case "1_Persona_Natural_y_asimiladas":
-                    summary = summary + $"*Tipo de Persona:* Persona Natural y asimiladas\n";
-                    break;
-            }
-            switch (parsedResponseJson.screen_0_Tipo_Identificacin_5)
-            {
-                case "0_Registro_Civil":
-                    summary = summary + $"*Tipo de Identificación:* Registro Civil\n";
-                    break;
-                case "1_Cédula_de_Ciudadanía":
-                    summary = summary + $"*Tipo de Identificación:* Cédula de Ciudadanía\n";
-                    break;
-                case "2_Tarjeta_de_extrangería":
-                    summary = summary + $"*Tipo de Identificación:* Tarjeta de extrangería\n";
-                    break;
-                case "3_Cédula_de_extranjería":
-                    summary = summary + $"*Tipo de Identificación:* Cédula de extranjería\n";
-                    break;
-                case "4_NIT":
-                    summary = summary + $"*Tipo de Identificación:* NIT\n";
-                    break;
-                case "5_Pasaporte":
-                    summary = summary + $"*Tipo de Identificación:* Pasaporte\n";
-                    break;
-                case "6_Documento_de_identificación_extranjero":
-                    summary = summary + $"*Tipo de Identificación:* Documento de identificación extranjero\n";
-                    break;
-                case "7_PEP_(Permiso_Especial_de_Permanencia)":
-                    summary = summary + $"*Tipo de Identificación:* PEP (Permiso Especial de Permanencia)\n";
-                    break;
-            }
-            switch (parsedResponseJson.screen_1_Tipo_Rgimen_5)
-            {
-                case "0_Impuesto_sobre_ventas_-_IVA":
-                    summary = summary + $"*Régimen Tributario:* Impuesto sobre ventas\n";
-                    break;
-                case "1_No_responsable_de_IVA":
-                    summary = summary + $"*Régimen Tributario:* No responsable de IVA\n";
-                    break;
-            }
-            switch (parsedResponseJson.screen_1_Obligaciones_Fiscale_6)
-            {
-                case "0_Gran_contribuyente":
-                    summary = summary + $"*Obligaciones Fiscales:* Gran contribuyente\n";
-                    break;
-                case "1_Autorretenedor":
-                    summary = summary + $"*Obligaciones Fiscales:* Autorretenedor\n";
-                    break;
-                case "2_Agente_de_retención_IVA":
-                    summary = summary + $"*Obligaciones Fiscales:* Agente de retención IVA\n";
-                    break;
-                case "3_Régimen_simple_tributación":
-                    summary = summary + $"*Obligaciones Fiscales:* Régimen simple tributación\n";
-                    break;
-                case "4_No_aplica-_Otros":
-                    summary = summary + $"*Obligaciones Fiscales:* No aplica\n";
-                    break;
-            }
-            _receivedMessages.Add("Summary: ");
-            _receivedMessages.Add(summary);
-            _receivedMessages.Add("Flow Token: ");
-            _receivedMessages.Add(parsedResponseJson.flow_token);
-            string messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, summary);
-            _receivedMessages.Add("Summary sent");
-            string compradpr = _manejoDeComprador.CrearComprador(parsedResponseJson, fromPhoneNumber);
-            _receivedMessages.Add("Comprador registrado");
-            _receivedMessages.Add(compradpr);
-
-            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_Cancelar", "Regresar") };
-            messageStatus = messageStatus + "\n" + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Gracias por registrarte, ¿Deseas proceder con la factura?", "Selecciona opción", "Facturar o regresar", _botones);
-
-            _receivedMessages.Add("Solicitud generar factura");
-            _receivedMessages.Add(messageStatus);
-
-            return messageStatus + "; " + compradpr;
-        }
-        private async Task<string> HandleInteractiveFlowMessageFacturaColombia(Flow_response_json_Model_1877921042740421_FacturaColombia parsedResponseJson, string fromPhoneNumber)
-        {
+            _receivedMessages.Add("HandleInteractiveFlowMessageInformaciónFactura");
             _receivedMessages.Add("Parsed Factura Colombia response_json:");
+            string messageStatus;
             _receivedMessages.Add(JsonSerializer.Serialize(parsedResponseJson, new JsonSerializerOptions { WriteIndented = true }));
-            //Mandar el Summary
-            string summary = $"*Resumen del Formulario Recibido:*\n" +
-                     $"\n*Información del Vendedor*\n" +
-                     $"*Nombre:* {parsedResponseJson.screen_0_Primer_Nombre_0} {parsedResponseJson.screen_0_Segundo_nombre_1} {parsedResponseJson.screen_0_Apellido_Paterno_2} {parsedResponseJson.screen_0_Apellido_Materno_3}\n" +
-                     $"*NIT:* {parsedResponseJson.screen_0_NIT_4}\n";
 
-            if (parsedResponseJson.screen_0_Correo_Electrnico_5 != "UNKNOWN")
-                summary = summary + $"*Correo:* {parsedResponseJson.screen_0_Correo_Electrnico_5}\n";
+            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura", "No"), ("opcion_Anadir_Producto", "Sí"), ("opcion_Cancelar", "Reiniciar Proceso") };//{ ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
+            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Deseas añadir un producto?", "Selecciona opción", "Hay 2 opciones", _botones);
+            _receivedMessages.Add(messageStatus);
+            UpdateObservaciones(fromPhoneNumber, parsedResponseJson.screen_0_Telfono_0 ?? "", parsedResponseJson.screen_0_Direccin_1 ?? "", parsedResponseJson.screen_0_Monto_2 ?? "", parsedResponseJson.screen_0_Descripcin_3 ?? "");
+            _receivedMessages.Add("Factura Updated");
             
-            summary= summary +  $"\n*Información del Comprador*\n" +
-                     $"*Nombre:* {parsedResponseJson.screen_1_Primer_Nombre_0} {parsedResponseJson.screen_1_Segundo_Nombre_1} {parsedResponseJson.screen_1_Apellido_Paterno_2} {parsedResponseJson.screen_1_Apellido_Materno_3}\n" +
-                     $"*NIT:* {parsedResponseJson.screen_1_NIT_4}\n" +
-                     $"*Razón social:* {parsedResponseJson.screen_1_Razn_social_5}\n" +
-
-                     $"\n*Información de Factura*\n" +
-                     $"*Dirección:* {parsedResponseJson.screen_2_Direccin_0}\n" +
-                     $"*Teléfono:* {parsedResponseJson.screen_2_Telfono_1}\n" +
-                     $"*Descripción:* {parsedResponseJson.screen_2_Descripcin_2}\n" +
-                     $"*Cantidad:* {parsedResponseJson.screen_2_Cantidad_3}";
-
-            _receivedMessages.Add("Summary: ");
-            _receivedMessages.Add(summary);
-            _receivedMessages.Add("Flow Token: ");
-            _receivedMessages.Add(parsedResponseJson.flow_token);
-            string messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, summary);
-            _receivedMessages.Add("Summary sent");
+            correosACopiar = parsedResponseJson.screen_0_Correos_4?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+            _receivedMessages.Add($"Correos ingresados: {string.Join(" | ", correosACopiar)}");
             return messageStatus;
-        }
-        private async Task<string> HandleInteractiveFlowMessageComprobanteNitClienteYCombrador(Flow_response_json_Model_1277233923341533_ComprobanteNitClienteYCombrador parsedResponseJson, string fromPhoneNumber)
+        }*/
+        
+        private async Task<string> HandleInteractiveFlowMessageObservacionesYMail(Flow_response_json_Model_1414924193269074_Observaciones_y_Mail parsedResponseJson, string fromPhoneNumber)
         {
-            try
-            {
-                string messageStatus;
-                _receivedMessages.Add("Parsed Comprobante NIT cliente y combrador response_json:");
-                _receivedMessages.Add(JsonSerializer.Serialize(parsedResponseJson, new JsonSerializerOptions { WriteIndented = true }));
-
-                _receivedMessages.Add("Flow Token: ");
-                _receivedMessages.Add(parsedResponseJson.flow_token);
-
-                //Comprobar si el comprador está registrado
-                bool existenciaComprador = _manejoDeComprador.CompradorExiste(parsedResponseJson.screen_0_Nombre_0, parsedResponseJson.screen_0_NIT_1);
-                if (!existenciaComprador)
-                {
-                    _receivedMessages.Add("No existe comprador");
-                    messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Comprador no registrado o nombre incorrecto");
-                    _receivedMessages.Add("Comprador no registrado o nombre incorrecto");
-                    _receivedMessages.Add(parsedResponseJson.screen_0_NIT_1);
-
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Generar_Factura_Text", "Generar factura") /*,("opcion_Enviar_Documento_Firmar", "Enviar documento")*/ };
-                    messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Favor de Registrarse o volver a intentar", "Selecciona opción", "Hay 2 opciones", _botones);
-                    _receivedMessages.Add("Favor de Registrarse o volver a intentar");
-                    //_lastMessageState = "";
-                    UpdateLastMessageState(fromPhoneNumber, "");
-                    _receivedMessages.Add(messageStatus);
-                    return messageStatus;
-                }
-                //_NITComprador = parsedResponseJson.screen_0_NIT_1;
-                UpdateNITComprador(fromPhoneNumber, parsedResponseJson.screen_0_NIT_1);
-                //_NombreComprador = parsedResponseJson.screen_0_Nombre_0;
-                UpdateNombreComprador(fromPhoneNumber, parsedResponseJson.screen_0_Nombre_0);
-
-                //comprobar si el comprador tiene el cliente
-                bool existenciaCliente = _manejoDeComprador.ClienteExisteEnComprador(parsedResponseJson.screen_0_NIT_2, parsedResponseJson.screen_0_NIT_1, parsedResponseJson.screen_0_Nombre_0);
-                if (!existenciaCliente)
-                {
-                    _receivedMessages.Add("No existe Cliente en comprador");
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Registrar_Cliente", "Registrar Cliente"), ("opcion_Generar_Factura_Flow_0", "Volver a intentar")};
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "No encontré este NIT en tus clientes", "Selecciona opción", "Lo vaz a registrar?", _botones);
-                    //_lastMessageState = parsedResponseJson.screen_0_NIT_1; // nit comprador
-                    //_oldUserMessage = parsedResponseJson.screen_0_Nombre_0; // nombre comprador
-                    _receivedMessages.Add(messageStatus);
-                    return messageStatus;
-                }
-                //_NITCliente = parsedResponseJson.screen_0_NIT_2;
-                UpdateNITCliente(fromPhoneNumber, parsedResponseJson.screen_0_NIT_2);
-
-                //Continuar con la factura si Cliente existe en el comprador
-                _receivedMessages.Add("Cliente existe en el comprador");
-
-                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Continuar_Con_La_Factura", "Facturar"), ("opcion_Cancelar", "Cancelar") };
-                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Encontré este NIT en tus clientes", "Selecciona opción", "Facturar?", _botones);
-                //_lastMessageState = parsedResponseJson.screen_0_NIT_2;// cliente
-                //_oldUserMessage = parsedResponseJson.screen_0_NIT_1; // comprador
-                //_lastMessageState = "";
-                UpdateLastMessageState(fromPhoneNumber, "");
-                //_oldUserMessage = "0";
-                UpdateOldUserMessage(fromPhoneNumber, "0");
-                _receivedMessages.Add("Options sent");
-                _receivedMessages.Add(messageStatus);
-                return messageStatus;
-            }
-            catch (Exception ex)
-            {
-                _receivedMessages.Add($"Error en ComprobanteNitClienteYCombrador: {ex.Message}");
-                return $"Error en ComprobanteNitClienteYCombrador: {ex.Message}";
-            }
-        }
-        private async Task<string> HandleInteractiveFlowMessageInformaciónFactura(Flow_response_json_Model_682423707677994_InformacionFactura parsedResponseJson, string fromPhoneNumber)
-        {
+            _receivedMessages.Add("HandleInteractiveFlowMessageObservacionesYMail");
             _receivedMessages.Add("Parsed Factura Colombia response_json:");
+            string messageStatus;
+            _receivedMessages.Add(JsonSerializer.Serialize(parsedResponseJson, new JsonSerializerOptions { WriteIndented = true }));
+            /*
+            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura", "No"), ("opcion_Anadir_Producto", "Sí"), ("opcion_Cancelar", "Reiniciar Proceso") };//{ ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
+            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Deseas añadir un producto?", "Selecciona opción", "Hay 3 opciones", _botones);
+            */
+            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura ", "Finalizar factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+
+            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Que deseas hacer", "Selecciona opción", "¿Finalizar factura o reiniciar el proceso?", _botones);
+            _receivedMessages.Add(messageStatus);
+            UpdateObservaciones(fromPhoneNumber, parsedResponseJson.Observaciones_y_Mail_0_Observaciones_0 ?? "-");
+            _receivedMessages.Add("Factura Updated");
+
+            correosACopiar = parsedResponseJson.Observaciones_y_Mail_0_Correos_1?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+            _receivedMessages.Add($"Correos ingresados: {string.Join(" | ", correosACopiar)}");
+            return messageStatus;
+        }
+        private async Task<string> HandleInteractiveFlowRegistroDIAN(Flow_response_json_Model_1232523891647775_Registro_DIAN parsedResponseJson, string fromPhoneNumber)
+        {
+            _receivedMessages.Add("HandleInteractiveFlowRegistroDIAN");
+            string messageStatus;
             _receivedMessages.Add(JsonSerializer.Serialize(parsedResponseJson, new JsonSerializerOptions { WriteIndented = true }));
 
-            //Extraer información
-            string infoClienteComprador = _manejoDeComprador.ReturnCompradorAndClientFromNit(GetNITCliente(fromPhoneNumber), GetNITComprador(fromPhoneNumber), GetNombreComprador(fromPhoneNumber)/*_NITCliente, _NITComprador, _NombreComprador*/);
-            if (infoClienteComprador.StartsWith("[ERROR]"))
-            {
-                _receivedMessages.Add($"ReturnCompradorAndClientFromNit Failed: {infoClienteComprador}");
-                return infoClienteComprador;
-            }
-            //Mandar el Summary
-            string summary = $"*Resumen del Formulario Recibido:*\n" + infoClienteComprador +
-                     $"\n*Información de Factura*\n" +
-                     $"*Dirección:* {parsedResponseJson.screen_0_Direccin_1}\n" +
-                     $"*Teléfono:* {parsedResponseJson.screen_0_Telfono_0}\n" +
-                     $"*Descripción:* {parsedResponseJson.screen_0_Descripcin_3}\n" +
-                     $"*Cantidad:* {parsedResponseJson.screen_0_Monto_2}";
-
-            _receivedMessages.Add("Summary: ");
-            _receivedMessages.Add(summary);
-            _receivedMessages.Add("Flow Token: ");
-            _receivedMessages.Add(parsedResponseJson.flow_token);
-            string messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, summary);
-            _receivedMessages.Add("Summary sent");
-            _receivedMessages.Add("Summary MessageStatus: ");
+            messageStatus = await MainMenuButton(fromPhoneNumber, "Registrado");
             _receivedMessages.Add(messageStatus);
-
-            string lastMessageState = GetLastMessageState(fromPhoneNumber);
-            //messageStatus = messageStatus + "; " + await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://test-timbrame.azurewebsites.net/Ejemplo/24a8a905-f155-4726-a27f-1451a8bf5388.pdf", $"Factura{fromPhoneNumber}{lastMessageState}.pdf");
-            messageStatus = messageStatus + "; " + await _messageSendService.EnviarDocumentoPorUrl(fromPhoneNumber, "https://drive.google.com/file/d/11sRf6l3n7fRI6J5vexuiKZKTDIYuDaKM/view?usp=sharing", $"FacturaEjemplo{fromPhoneNumber}{lastMessageState}.pdf");
-            _receivedMessages.Add("Zip sent");
-            _receivedMessages.Add("Zip MessageStatus: ");
-            _receivedMessages.Add(messageStatus);
-
-            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Cancelar", "Regresar al inicio") };
-            messageStatus = messageStatus + "; " + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Factura creada", "Gracias por usar Timbrabot", "Desea regrezar al inicio", _botones);
-            _receivedMessages.Add("Return button sent");
-            _receivedMessages.Add("Return button MessageStatus: ");
-            _receivedMessages.Add(messageStatus);
-
-            //_NITCliente = "";
-            UpdateNITCliente(fromPhoneNumber, "");
-            //_lastMessageState = "";
-            UpdateLastMessageState(fromPhoneNumber, "");
-            //_oldUserMessage = "0";
-            UpdateOldUserMessage(fromPhoneNumber, "0");
+            UpdateRestart(fromPhoneNumber);
             return messageStatus;
         }
-        private async Task<string> HandleInteractiveFlowMessageInformaciónDelCliente(Flow_response_json_Model_1297640437985053_InformacionDelCliente parsedResponseJson, string fromPhoneNumber)
-        {
-            _receivedMessages.Add("HandleInteractiveFlowMessageInformaciónDelCliente");
-            bool existenciaCliente = _manejoDeComprador.ClienteExisteEnComprador(parsedResponseJson.screen_0_NIT_4, GetNITComprador(fromPhoneNumber), GetNombreComprador(fromPhoneNumber)/*_NITComprador, _NombreComprador*/);
-            string messageStatus = "";
-            string errorMessage = "Error desconocido";
-            string messageToSend = "";
-            if (existenciaCliente)
-            {
-                _receivedMessages.Add("Cliente ya existe en comprador");
-                //messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Cliente ya existe en comprador");
-                messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1297640437985053", $"opcionRegistrarCliente{fromPhoneNumber}", "published", "Cliente ya existe en comprador", "Registrar");
-                return messageStatus;
-            }
-            _receivedMessages.Add($"Comprador {GetNombreComprador(fromPhoneNumber)/*_NombreComprador*/}, {GetNITComprador(fromPhoneNumber)/*_NITComprador*/}");
 
-            messageStatus = _manejoDeComprador.AñadirClienteAComprador(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber),/*_NombreComprador, _NITComprador,*/ parsedResponseJson);
-
-            if (messageStatus == "[ERROR] Comprador no existe")
-                errorMessage = "Comprador no existe, Volver a intentar";
-            else if (messageStatus == "[ERROR] Cliente ya existe en comprador")
-                errorMessage = "Cliente ya existe en comprador, Volver a intentar";
-            else if (messageStatus.StartsWith("[ERROR]"))
-                errorMessage = "De compilación";
-            if (messageStatus.StartsWith("[ERROR]"))
-            {
-                messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1297640437985053", $"opcionRegistrarCliente{fromPhoneNumber}", "published", errorMessage, "Registrar");
-                return messageStatus;
-            }
-            
-            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, messageStatus);
-
-            messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "682423707677994", $"opcionFacturar{fromPhoneNumber}", "published", "Todo parece estar listo, ya puedes facturar", "Facturar ahora");
-            //_NITCliente = parsedResponseJson.screen_0_NIT_4;
-            UpdateNITCliente(fromPhoneNumber, parsedResponseJson.screen_0_NIT_4);
-            //_lastMessageState = "";
-            UpdateLastMessageState(fromPhoneNumber, "");
-            //_oldUserMessage = "0";
-            UpdateOldUserMessage(fromPhoneNumber, "0");
-            return messageStatus;
-        }
         private async Task<string> HandleInteractiveFlowMessageRegistraPersonaFísica(Flow_response_json_Model_637724539030495_RegistrarPersonaFisicaSimple parsedResponseJson, string fromPhoneNumber)
         {
             _receivedMessages.Add($"HandleInteractiveFlowMessageRegistraPersonaFísica");
@@ -1297,12 +1997,17 @@ namespace WhatsAppPresentacionV6.Controllers
             if (existencia == null)
             {
                 _receivedMessages.Add("Error, existencia is null");
+
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "[Error] existencia is null");
+
                 return "Error, existencia is null";
             }
             else if (existencia)
             {
                 _receivedMessages.Add($"Comprador Existe");
-                messageStatus = _manejoDeComprador.ModificarPersonaFísica(parsedResponseJson, fromPhoneNumber);
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Usuario ya existe, modificando información");
+
+                messageStatus = messageStatus + _manejoDeComprador.ModificarPersonaFísica(parsedResponseJson, fromPhoneNumber);
             }
             else
             {
@@ -1311,15 +2016,27 @@ namespace WhatsAppPresentacionV6.Controllers
             }
             _receivedMessages.Add($"Comprador: {fullName}, {parsedResponseJson.screen_1_NIT_0}");
 
-            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+            if (parsedResponseJson.Registrar_Persona_Fisica_Tipo_Identificacin_5 != "4_NIT" &&
+                parsedResponseJson.screen_1_documento == null)
+            {
+                _receivedMessages.Add("Error: Documento de identificación requerido");
+            }
+
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Generar_Factura_Registrar_Persona_Flow")
+            {
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+                _receivedMessages.Add(messageStatus);
+                UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
+                UpdateNITComprador(fromPhoneNumber, parsedResponseJson.screen_1_NIT_0);
+                UpdateNombreComprador(fromPhoneNumber, fullName);
+                UpdateOldUserMessage(fromPhoneNumber, "HandleInteractiveFlowMessageRegistraPersonaFísica");
+                return messageStatus;
+            }
+
+            messageStatus = await MainMenuButton(fromPhoneNumber, null);
+            UpdateRestart(fromPhoneNumber);
             _receivedMessages.Add(messageStatus);
-            //_lastMessageState = "opcion_Generar_Factura_Cliente";
-            UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
-            //_NITComprador = parsedResponseJson.screen_1_NIT_0;
-            UpdateNITComprador(fromPhoneNumber, parsedResponseJson.screen_1_NIT_0);
-            //_NombreComprador = fullName;
-            UpdateNombreComprador(fromPhoneNumber, fullName);
-            UpdateOldUserMessage(fromPhoneNumber, "HandleInteractiveFlowMessageRegistraPersonaFísica");
+
             return messageStatus;
         }
         private async Task<string> HandleInteractiveFlowMessageRegistraEmpresa(Flow_response_json_Model_1187351356327089_RegistrarEmpresa parsedResponseJson, string fromPhoneNumber)
@@ -1336,6 +2053,7 @@ namespace WhatsAppPresentacionV6.Controllers
             {
                 _receivedMessages.Add($"Empresa existe");
                 messageStatus = _manejoDeComprador.ModificarEmpresa(parsedResponseJson, fromPhoneNumber);
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Usuario ya existe, modificando información");
             }
             else
             {
@@ -1344,23 +2062,52 @@ namespace WhatsAppPresentacionV6.Controllers
             }
             _receivedMessages.Add($"Empresa: {parsedResponseJson.Registrar_Empresa_Nombre_0}, {parsedResponseJson.Registrar_Empresa_NIT_1}");
 
-            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Generar_Factura_Registrar_Empresa_Flow")
+            {
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "¿A quién facturarás?\nPuedes escribir su NIT, Nombre o una parte de estos");
+                _receivedMessages.Add(messageStatus);
+                UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
+                UpdateNITComprador(fromPhoneNumber, parsedResponseJson.Registrar_Empresa_NIT_1);
+                UpdateNombreComprador(fromPhoneNumber, parsedResponseJson.Registrar_Empresa_Nombre_0);
+                UpdateOldUserMessage(fromPhoneNumber, "HandleInteractiveFlowMessageRegistraEmpresa");
+                return messageStatus;
+            }
+
+            messageStatus = await MainMenuButton(fromPhoneNumber, null);
+            UpdateRestart(fromPhoneNumber);
             _receivedMessages.Add(messageStatus);
-            //_lastMessageState = "opcion_Generar_Factura_Cliente";
-            UpdateLastMessageState(fromPhoneNumber, "opcion_Generar_Factura_Cliente");
-            //_NITComprador = parsedResponseJson.Registrar_Empresa_NIT_1;
-            UpdateNITComprador(fromPhoneNumber, parsedResponseJson.Registrar_Empresa_NIT_1);
-            //_NombreComprador = parsedResponseJson.Registrar_Empresa_Nombre_0;
-            UpdateNombreComprador(fromPhoneNumber, parsedResponseJson.Registrar_Empresa_Nombre_0);
-            UpdateOldUserMessage(fromPhoneNumber, "HandleInteractiveFlowMessageRegistraEmpresa");
+
             return messageStatus;
         }
         private async Task<string> HandleInteractiveFlowCearProducto(Flow_response_json_Model_1142951587576244_Crear_Producto parsedResponseJson, string fromPhoneNumber)
         {
             string messageStatus;
             _receivedMessages.Add("HandleInteractiveFlowCearProducto");
-            if (_productos.Any(c => c.Agregar_Producto_Nombre.Contains(parsedResponseJson.Agregar_Producto_Nombre, StringComparison.OrdinalIgnoreCase)) ||
-                _productos.Any(c => c.Agregar_Producto_Codigo.Contains(parsedResponseJson.Agregar_Producto_Codigo, StringComparison.OrdinalIgnoreCase)))
+            if (string.IsNullOrEmpty(parsedResponseJson.Agregar_Producto_Codigo))
+            {
+                _receivedMessages.Add("Falta código de producto");
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Falta código de producto");
+                _receivedMessages.Add(messageStatus);
+                UpdateRestart(fromPhoneNumber);
+                return "Producto Fallado";
+            }else if (string.IsNullOrEmpty(parsedResponseJson.Agregar_Producto_Nombre)){
+                _receivedMessages.Add("Falta nombre de producto");
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Falta nombre de producto");
+                _receivedMessages.Add(messageStatus);
+                UpdateRestart(fromPhoneNumber);
+                return "Producto Fallado";
+            }
+            else if (string.IsNullOrEmpty(parsedResponseJson.Agregar_Producto_Precio_Unitario)){
+                _receivedMessages.Add("Falta Precio Unitario del producto");
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Falta Precio Unitario del producto");
+                _receivedMessages.Add(messageStatus);
+                UpdateRestart(fromPhoneNumber);
+                return "Producto Fallado";
+            }
+
+
+            if (_productos.Any(c => c.Agregar_Producto_Nombre.Equals(parsedResponseJson.Agregar_Producto_Nombre, StringComparison.OrdinalIgnoreCase)) ||
+                _productos.Any(c => c.Agregar_Producto_Codigo.Equals(parsedResponseJson.Agregar_Producto_Codigo, StringComparison.OrdinalIgnoreCase)))
             {
                 _receivedMessages.Add("Producto ya existe");
                 messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Producto ya existe");
@@ -1369,40 +2116,233 @@ namespace WhatsAppPresentacionV6.Controllers
             }
             _productos.Add(parsedResponseJson);
             messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Producto añadido");
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Configurar_Productos_agregar")
+            {
+                _receivedMessages.Add("HandleInteractiveFlowCearProducto: opcion_Configurar_Productos_agregar");
+
+                messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, null);
+                UpdateRestart(fromPhoneNumber);
+            }
+            else if (GetLastMessageState(fromPhoneNumber) == "opcion_Anadir_Producto_agregar")
+            {
+                _receivedMessages.Add("HandleInteractiveFlowCearProducto: opcion_Anadir_Producto_agregar");
+                AddProductosEnFacturaList(fromPhoneNumber, parsedResponseJson.Agregar_Producto_Codigo);
+
+                string precioString = parsedResponseJson.Agregar_Producto_Precio_Unitario;
+                if (float.TryParse(precioString, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedFloat))
+                {
+                    UpdateLastMessageState(fromPhoneNumber, "opcion_Anadir_Producto");
+                    var parameters = new { Precio_Unitario = parsedFloat, Precio_String = precioString };
+                    messageStatus = await _messageSendService.EnviarFlowConDatos(fromPhoneNumber, "651685330992197", $"opcionFacturar{fromPhoneNumber}", "published", "Producto Registrado, proporciona Monto unitario y cantidad de unidades del producto", "Llenar", parameters, "DETAILS");
+                    _receivedMessages.Add("Message Status: ");
+                    _receivedMessages.Add(messageStatus);
+                    return "Producto añadido";
+                }
+
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Observaciones_Y_Mail", "No añadir"), ("opcion_Anadir_Producto", "Añadir"), ("opcion_Cancelar", "Reiniciar Proceso") };//{ ("opcion_Recibir_Registro_Flow", "Regístrame"), ("opcion_Registrar_Empresa_Flow", "Registrar Empresa"), ("opcion_Generar_Factura_Text ", "Generar factura") };
+                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Error al registrar", "Producto", "Hay 3 opciones", _botones);
+            }
+            else
+            {
+                _receivedMessages.Add("HandleInteractiveFlowCearProducto: else???");
+                messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, "Error: reiniciando");
+                UpdateRestart(fromPhoneNumber);
+            }
+            _receivedMessages.Add("Message Status: ");
+            _receivedMessages.Add(messageStatus);
+            return "Producto añadido";
+        }
+        private async Task<string> HandleInteractiveFlowModificarProducto(Flow_response_json_Model_572042871927108_Modificar_Producto parsedResponseJson, string fromPhoneNumber)
+        {
+            string messageStatus;
+
+            string codigoModificar = _producto_a_modificar[fromPhoneNumber].productoCodigoModificar;
+            string ViejoNombreProducto = _producto_a_modificar[fromPhoneNumber].productoNombreOld;
+
+            _receivedMessages.Add("HandleInteractiveFlowModificarProducto");
+
+            // Buscar el producto en la lista
+            var producto = _productos.FirstOrDefault(p =>
+                p.Agregar_Producto_Codigo == codigoModificar);
+
+            _receivedMessages.Add($"Producto: {codigoModificar}");
+
+            if (producto == null)
+            {
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Producto no encontrado");
+                _receivedMessages.Add(messageStatus);
+                UpdateRestart(fromPhoneNumber);
+
+                return messageStatus;
+            }
+
+            // Modificar solo los campos que vienen en parsedResponseJson
+            if (parsedResponseJson.Modificar_Producto_Nombre != null && parsedResponseJson.Modificar_Producto_Nombre != "Nombre del producto")
+            {
+                producto.Agregar_Producto_Nombre = parsedResponseJson.Modificar_Producto_Nombre;
+                _receivedMessages.Add("Nombre modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Precio_Unitario != null && parsedResponseJson.Modificar_Producto_Precio_Unitario != "Precio Unitario")
+            {
+                producto.Agregar_Producto_Precio_Unitario = parsedResponseJson.Modificar_Producto_Precio_Unitario;
+                _receivedMessages.Add("Precio Unitario modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Info_Adicional != null && parsedResponseJson.Modificar_Producto_Info_Adicional != "Info")
+            {
+                producto.Agregar_Producto_Info_Adicional = parsedResponseJson.Modificar_Producto_Info_Adicional;
+                _receivedMessages.Add("Info modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Unidad_Medida != null && parsedResponseJson.Modificar_Producto_Unidad_Medida != "Unidad de medida")
+            { 
+                producto.Agregar_Producto_Unidad_Medida = parsedResponseJson.Modificar_Producto_Unidad_Medida;
+                _receivedMessages.Add("Unidad de medida modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Activo != null && parsedResponseJson.Modificar_Producto_Activo != "Activo")
+            {
+                producto.Agregar_Producto_Activo = parsedResponseJson.Modificar_Producto_Activo;
+                _receivedMessages.Add("Activo modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_traslados != null && parsedResponseJson.Modificar_Producto_traslados != "Impuestos traslados")
+            {
+                producto.Agregar_Producto_traslados = parsedResponseJson.Modificar_Producto_traslados;
+                _receivedMessages.Add("Impuestos traslados modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Impuesto != null && parsedResponseJson.Modificar_Producto_Impuesto != "Impuesto")
+            {
+                producto.Agregar_Producto_Impuesto = parsedResponseJson.Modificar_Producto_Impuesto;
+                _receivedMessages.Add("Impuesto modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Tasa_cuota != null && parsedResponseJson.Modificar_Producto_Tasa_cuota != "Tasa o cuota")
+            {
+                producto.Agregar_Producto_Tasa_cuota = parsedResponseJson.Modificar_Producto_Tasa_cuota;
+                _receivedMessages.Add("Tasa o cuota modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Impuestos_Saludables != null && parsedResponseJson.Modificar_Producto_Impuestos_Saludables != "Impuestos Saludables")
+            {
+                producto.Agregar_Producto_Impuestos_Saludables = parsedResponseJson.Modificar_Producto_Impuestos_Saludables;
+                _receivedMessages.Add("Impuestos Saludables modificado");
+            }
+
+            if (parsedResponseJson.Modificar_Producto_Impuestos_Saludables2 != null)
+            {
+                producto.Agregar_Producto_Impuestos_Saludables2 = parsedResponseJson.Modificar_Producto_Impuestos_Saludables2;
+                _receivedMessages.Add("Impuestos Saludables2 modificado");
+            }
+            
+            messageStatus = await MainMenuButton(fromPhoneNumber, "Producto Modificado");
+            _receivedMessages.Add(messageStatus);
             UpdateRestart(fromPhoneNumber);
+
             return "Producto añadido";
         }
         private async Task<string> HandleInteractiveFlowMessageRegistrarCliente(Flow_response_json_Model_1584870855544061_CrearCliente parsedResponseJson, string fromPhoneNumber)
         {
-            _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente");
             string messageStatus;
+            string? NITCliente = null;
+
+            if (string.IsNullOrEmpty(parsedResponseJson.RegistraCliente_Tipo_Cliente))
+            {
+                _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente: RegistraCliente_Tipo_Cliente is null");
+                messageStatus = await MainMenuButton(fromPhoneNumber, "Error: tipo de cliente null, reiniciando");
+                UpdateRestart(fromPhoneNumber);
+                _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente {messageStatus}");
+                return "Error: tipo de cliente null";
+            }
+
+            if (parsedResponseJson.flow_token == "pruebaconDataCrearCli")
+            {
+                _receivedMessages.Add("pruebaconDataCrearCli");
+                _receivedMessages.Add(parsedResponseJson.RegisterClient_Juridical_Razon_Social);
+                return "Prueba";
+            }
+            _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente");
+            _receivedMessages.Add(parsedResponseJson.RegistraCliente_Tipo_Cliente);
             messageStatus = _manejoDeComprador.AñadirClienteNaturalJudicialAComprador(GetNombreComprador(fromPhoneNumber), GetNITComprador(fromPhoneNumber), parsedResponseJson);
+            _receivedMessages.Add(messageStatus);
 
-
+            /*NITCliente = !string.IsNullOrWhiteSpace(parsedResponseJson.RegisterClient_Juridical_NIT) && parsedResponseJson.RegistraCliente_Tipo_Cliente != "Tipo_Persona_Juridica"
+                ? parsedResponseJson.RegisterClient_Juridical_NIT
+                : (!string.IsNullOrWhiteSpace(parsedResponseJson.RegisterClient_Natural_NIT) && parsedResponseJson.RegistraCliente_Tipo_Cliente != "RegisterClient_Natural_NIT"
+                ? parsedResponseJson.RegisterClient_Natural_NIT
+                : null);*/
             if (parsedResponseJson.RegistraCliente_Tipo_Cliente == "Tipo_Persona_Juridica")
             {
+                NITCliente = parsedResponseJson.RegisterClient_Juridical_NIT;
+
+                _receivedMessages.Add($"Nit: {NITCliente}");
+                _receivedMessages.Add($"Razon social: {parsedResponseJson.RegisterClient_Juridical_Razon_Social}");
+                _receivedMessages.Add($"Digito verificacion: {parsedResponseJson.RegisterClient_Juridical_Digito_Verificacion}");
+                _receivedMessages.Add($"Direccion: {parsedResponseJson.RegisterClient_Juridical_Direccion}");
+                _receivedMessages.Add($"Departamento: {parsedResponseJson.RegisterClient_Juridical_Departamento}");
+                _receivedMessages.Add($"Ciudad: {parsedResponseJson.RegisterClient_Juridical_Ciudad}");
+                _receivedMessages.Add($"Tipo régimen: {parsedResponseJson.RegisterClient_Juridical_Tipo_Regimen}");
+                _receivedMessages.Add($"Obligaciones Fiscales: {parsedResponseJson.RegisterClient_Juridical_Obligaciones_Fiscales}");
+
                 _receivedMessages.Add("Persona Judicial");
                 messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Persona Judicial Registrada");
             }
             else if (parsedResponseJson.RegistraCliente_Tipo_Cliente == "Tipo_Persona_Natural")
             {
+                NITCliente = parsedResponseJson.RegisterClient_Natural_NIT;
+
+                _receivedMessages.Add($"Nit: {NITCliente}");
+                _receivedMessages.Add($"Nombre: {parsedResponseJson.RegisterClient_Natural_Nombre}");
+                _receivedMessages.Add($"Apellido paterno: {parsedResponseJson.RegisterClient_Natural_Apellido_Paterno}");
+                _receivedMessages.Add($"Apellido materno: {parsedResponseJson.RegisterClient_Natural_Apellido_Materno}");
+                _receivedMessages.Add($"Correo: {parsedResponseJson.RegisterClient_Natural_Correo}");
+                _receivedMessages.Add($"Teléfono: {parsedResponseJson.RegisterClient_Natural_Telefono}");
+                _receivedMessages.Add($"Digito de Verificacion: {parsedResponseJson.RegisterClient_Natural_Digito_Verificacin}");
+                _receivedMessages.Add($"Direccion: {parsedResponseJson.RegisterClient_Natural_Direccion}");
+                _receivedMessages.Add($"Departamento: {parsedResponseJson.RegisterClient_Natural_Departamento}");
+                _receivedMessages.Add($"Ciudad: {parsedResponseJson.RegisterClient_Natural_Ciudad}");
+                _receivedMessages.Add($"Tipo régimen: {parsedResponseJson.RegisterClient_Natural_Tipo_Rgimen}");
+                _receivedMessages.Add($"Obligaciones Fiscales: {parsedResponseJson.RegisterClient_Natural_Obligaciones_Fiscale}");
+
                 _receivedMessages.Add($"Persona Natural");
                 messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Persona Natural Registrada");
             }
             else
             {
-                _receivedMessages.Add($"Error, tipo de persona desconocido");
-                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Error, tipo de persona desconocido");
+                _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente: RegistraCliente_Tipo_Cliente tipo de cliente desconocido: {parsedResponseJson.RegisterClient_Natural_NIT}");
+                messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, "Error: tipo de cliente desconocido, reiniciando");
+                UpdateRestart(fromPhoneNumber);
+                _receivedMessages.Add($"HandleInteractiveFlowMessageRegistrarCliente {messageStatus}");
+                return "Error con el tipo de cliente: reiniciando";
             }
-            if (GetTipoProgramacion(fromPhoneNumber) == "opcion_Generar_Factura_Cliente")
+
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Registrar_Cliente")
+            {
+                _receivedMessages.Add("opcion_Registrar_Cliente");
+
+                //messageStatus = await _messageSendService.EnviarFlow(fromPhoneNumber, "1414924193269074", $"opcionFacturar{fromPhoneNumber}", "published", "Todo parece estar listo, ya puedes facturar", "Facturar ahora");
+
+                //_botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Anadir_Producto ", ""), ("opcion_Cancelar", "Reiniciar Proceso") };
+                //messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "Que deseas hacer", "Selecciona opción", "¿Regrezar al inicio o continuar?", _botones);
+
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Favor de indicar nombre del producto a añadir a la factura");
+
+                //_NITCliente = parsedResponseJson.screen_0_NIT_4;
+                UpdateNITCliente(fromPhoneNumber, NITCliente);
+                UpdateLastMessageState(fromPhoneNumber, "opcion_Anadir_Producto");
+                UpdateOldUserMessage(fromPhoneNumber, "0");
+                _receivedMessages.Add(messageStatus);
+                return messageStatus;
+            }
+            else if (GetLastMessageState(fromPhoneNumber) == "opcion_Agregar_Clientes")
             {
 
+                messageStatus = await MainMenuButton(fromPhoneNumber, null);
             }
-            //_NITCliente = "";
-            UpdateNITCliente(fromPhoneNumber, "");
-            //_lastMessageState = "";
+            UpdateNITCliente(fromPhoneNumber, NITCliente);
             UpdateLastMessageState(fromPhoneNumber, "");
-            //_oldUserMessage = "0";
             UpdateOldUserMessage(fromPhoneNumber, "0");
             UpdateNITComprador(fromPhoneNumber, "");
             UpdateNombreComprador(fromPhoneNumber, "");
@@ -1419,17 +2359,26 @@ namespace WhatsAppPresentacionV6.Controllers
             if (messageStatus.StartsWith("[ERROR]"))
             {
                 messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Error al actualizar");
+                _receivedMessages.Add("Error al actualizar");
+            }
+            else
+            {
+            _receivedMessages.Add("Sin errores");
+            messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Empresa Cliente modificada correctamente");
+            _receivedMessages.Add("Empresa Cliente modificada correctamente");
+            }
+
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Finalizar_Modificar_Cliente_Modificar")
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura", "Ver Factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer?", "Selecciona opción", "Hay 2 opcioned", _botones);
+                UpdateNITCliente(fromPhoneNumber, parsedResponseJson.ModificarCliente_Empresa_Juridical_NIT);
                 _receivedMessages.Add(messageStatus);
-                UpdateRestart(fromPhoneNumber);
                 return messageStatus;
             }
-            _receivedMessages.Add("Sin errores");
+            messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, null);
             UpdateRestart(fromPhoneNumber);
-
-            messageStatus = messageStatus + await _messageSendService.EnviarTexto(fromPhoneNumber, "Empresa Cliente modificada correctamente");
-
             _receivedMessages.Add(messageStatus);
-            _receivedMessages.Add("Empresa Cliente modificada correctamente");
             return messageStatus;
         }
         private async Task<string> HandleInteractiveFlowMessageModificarClienteNatural(Flow_response_json_Model_931945452349522_Modificar_Cliente_Persona_Física parsedResponseJson, string fromPhoneNumber)
@@ -1440,22 +2389,107 @@ namespace WhatsAppPresentacionV6.Controllers
             if (messageStatus.StartsWith("[ERROR]"))
             {
                 messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Error al actualizar");
+                _receivedMessages.Add("Error al actualizar");
+            }
+            else
+            {
+                messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Cliente persona Natural modificado correctamente");
+            _receivedMessages.Add("Cliente persona Natural modificado correctamente");
+            }
+
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Finalizar_Modificar_Cliente_Modificar")
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Factura", "Ver Factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer?", "Selecciona opción", "Hay 2 opcioned", _botones);
+                UpdateNITCliente(fromPhoneNumber, parsedResponseJson.ModificarCliente_Natural_NIT);
                 _receivedMessages.Add(messageStatus);
-                UpdateRestart(fromPhoneNumber);
                 return messageStatus;
             }
+
+            messageStatus = messageStatus + await MainMenuButton(fromPhoneNumber, null);
             UpdateRestart(fromPhoneNumber);
-
-            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Cliente persona Natural modificado correctamente");
-
             _receivedMessages.Add(messageStatus);
-            _receivedMessages.Add("Cliente persona Natural modificado correctamente");
             return messageStatus;
         }
+        private async Task<string> HandleInteractiveFlowPrecioUnitarioyCantidad(Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad parsedResponseJson, string fromPhoneNumber)
+        {
+            int monto = 1;
+            _receivedMessages.Add($"HandleInteractiveFlowPrecioUnitarioyCantidad");
+
+            _receivedMessages.Add($"Precio nuevo: {parsedResponseJson.PUyC_Precio_Unitario}");
+            string messageStatus;
+            AddProductosPrecioYCantidad(fromPhoneNumber, parsedResponseJson);
 
 
+            string observaciones = GetObservaciones(fromPhoneNumber);
+            var preciosYCantidades = GetPrecioUnitarioYCantidad(fromPhoneNumber);
+            // Calculate the sum of PUyC_Precio_Unitario * PUyC_Cantidad
+            float totalSum = preciosYCantidades.Sum(p =>
+            {
+                bool parsedPrecio = float.TryParse(p.PUyC_Precio_Unitario, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float precio);
+                bool parsedCantidad = float.TryParse(p.PUyC_Cantidad, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cantidad);
+                return (parsedPrecio && parsedCantidad) ? precio * cantidad : 0f;
+            });
+            
+            _receivedMessages.Add($"Total: {totalSum} = {totalSum}");
+
+            messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, $"El total de los productos es {totalSum}");
+
+            if (GetLastMessageState(fromPhoneNumber) == "opcion_Finalizar_Modificar_Productos_Anadir")
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Otro producto"), ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer?", "¿Añadir otro producto o Finalizar la factura?", "No puedes crear aquí", _botones);
+
+            }
+            else
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Anadir_Producto", "Otro producto"), ("opcion_Observaciones_Y_Mail ", "Añadir Información"), ("opcion_Finalizar_Factura ", "Finalizar factura") };
+                messageStatus = messageStatus + await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer?", "¿Añadir otro producto, Finalizar la factura o Añadir observaciones o correos a copiar?", "", _botones);
+            }
+            _receivedMessages.Add(messageStatus);
+            _receivedMessages.Add("PrecioUnitarioyCantidad guardado");
+            return messageStatus;
+        }
+        
 
 
+        private async Task<string> MainMenuButton(string fromPhoneNumber, string? mainText)
+        {
+            string messageStatus;
+
+            if (string.IsNullOrEmpty(mainText))
+                mainText = "Soy Timbrame Bot, ¿En que puedo ayudarte?";
+            int CompConCel = _manejoDeComprador.ContarCompradoresConTelefono(fromPhoneNumber);
+            if (CompConCel <= 0)
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Iniciar_Sesión", "Iniciar Sesión") };
+                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, mainText, "No hay usuarios relacionados a tu teléfono", "Regístrate", _botones);
+                _receivedMessages.Add(messageStatus);
+                return messageStatus;
+            }
+
+            int CliPorCel = _manejoDeComprador.ContarClientesPorTelefono(fromPhoneNumber);
+            if (CliPorCel <= 0)
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Iniciar_Sesión", "Iniciar Sesión"), ("opcion_configurar", "Configurar") };
+                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, mainText, "No tienes clientes relacionados a un usuario con tu teléfono", "Selecciona configurar para añadir cliente", _botones);
+                _receivedMessages.Add(messageStatus);
+                return messageStatus;
+            }
+
+            /*int ProdPorCel = _manejoDeComprador.ContarProductosPorTelefono(fromPhoneNumber);
+            if (ProdPorCel <= 0)
+            {
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Recibir_Elegir_tipo_Registro", "Regístrame"), ("opcion_Iniciar_Sesión", "Iniciar Sesión"), ("opcion_configurar", "Configurar") };
+                messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, mainText, "No tienes productos relacionados a un usuario con tu teléfono", "Selecciona configurar para añadir productos", _botones);
+                _receivedMessages.Add(messageStatus);
+                return messageStatus;
+            }*/
+
+            _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_configurar_usuario", "Configurar usuario"), ("opcion_Generar_Factura_Text ", "Generar factura"), ("opcion_configurar", "Configurar") };
+            messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, mainText, "Estás listo para facturar", "Hay 3 opciones", _botones);
+            return messageStatus;
+        }
 
         private void UpdateLastMessageState(string fromPhoneNumber, string newMessageState)
         {
@@ -1465,15 +2499,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     newMessageState,  // Update lastMessageState
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
@@ -1485,15 +2520,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     oldUserMessageNew,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
@@ -1505,95 +2541,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     MessageChange,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
-                );
-            }
-        }
-        private void UpdatetTipoProgramación(string fromPhoneNumber, string MessageChange)
-        {
-            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
-            {
-                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
-                    existingData.lastMessageState,
-                    existingData.oldUserMessage,
-                    existingData.montoFactura,
-                    MessageChange,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
-                    existingData.NITCliente,
-                    existingData.NITComprador,
-                    existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
-                );
-            }
-        }
-        private void UpdateUsoCFDI(string fromPhoneNumber, string MessageChange)
-        {
-            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
-            {
-                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
-                    existingData.lastMessageState,
-                    existingData.oldUserMessage,
-                    existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    MessageChange,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
-                    existingData.NITCliente,
-                    existingData.NITComprador,
-                    existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
-                );
-            }
-        }
-        private void UpdateUsuarioAUsar(string fromPhoneNumber, string MessageChange)
-        {
-            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
-            {
-                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
-                    existingData.lastMessageState,
-                    existingData.oldUserMessage,
-                    existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    MessageChange,
-                    existingData.usuarioAUsarID,
-                    existingData.NITCliente,
-                    existingData.NITComprador,
-                    existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
-                );
-            }
-        }
-        private void UpdateUsuarioAUsarID(string fromPhoneNumber, string MessageChange)
-        {
-            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
-            {
-                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
-                    existingData.lastMessageState,
-                    existingData.oldUserMessage,
-                    existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    MessageChange,
-                    existingData.NITCliente,
-                    existingData.NITComprador,
-                    existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
@@ -1605,15 +2562,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     MessageChange,
                     existingData.NITComprador,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
@@ -1625,15 +2583,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     MessageChange,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
@@ -1645,19 +2604,44 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     MessageChange,
-                    existingData.clientExistance,
-                    existingData.valueInList
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
-        private void UpdateClientExistanceList(string fromPhoneNumber, List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> MessageChange)
+        /*private void UpdateFactura(string fromPhoneNumber, string Telefono,
+                    string dirección,
+                    string Monto,
+                    string Descripcón)
+        {
+
+            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
+            {
+                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
+                    existingData.lastMessageState,
+                    existingData.oldUserMessage,
+                    existingData.montoFactura,
+                    existingData.NITCliente,
+                    existingData.NITComprador,
+                    existingData.NombreComprador,
+                    Telefono,
+                    dirección,
+                    Monto,
+                    Descripcón,
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
+                );
+            }
+        }*/
+        private void UpdateObservaciones(string fromPhoneNumber, string MessageChange)
         {
             if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
             {
@@ -1665,19 +2649,16 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     existingData.NombreComprador,
                     MessageChange,
-                    existingData.valueInList
+                    existingData.ListaProductos,
+                    existingData.ListaPreciosYCantidades
                 );
             }
         }
-        private void UpdateValueInList(string fromPhoneNumber, byte MessageChange)
+        private void UpdateProductosEnFacturaList(string fromPhoneNumber, List<string> MessageChange)
         {
             if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
             {
@@ -1685,64 +2666,97 @@ namespace WhatsAppPresentacionV6.Controllers
                     existingData.lastMessageState,
                     existingData.oldUserMessage,
                     existingData.montoFactura,
-                    existingData.tipoProgramación,
-                    existingData.usoCFDI,
-                    existingData.usuarioAUsar,
-                    existingData.usuarioAUsarID,
                     existingData.NITCliente,
                     existingData.NITComprador,
                     existingData.NombreComprador,
-                    existingData.clientExistance,
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    MessageChange,
+                    existingData.ListaPreciosYCantidades
+                );
+            }
+        }
+        private void UpdatePrecioUnitarioYCantidad(string fromPhoneNumber, List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> MessageChange)
+        {
+            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
+            {
+                _RegisteredPhoneDicitonary[fromPhoneNumber] = (
+                    existingData.lastMessageState,
+                    existingData.oldUserMessage,
+                    existingData.montoFactura,
+                    existingData.NITCliente,
+                    existingData.NITComprador,
+                    existingData.NombreComprador,
+                    //existingData.Factura_Telefono,
+                    //existingData.Factura_dirección,
+                    //existingData.Factura_Monto,
+                    //existingData.Factura_Descripcón,
+                    existingData.Factura_Observaciones,
+                    existingData.ListaProductos,
                     MessageChange
                 );
             }
         }
-        private void  UpdateRestart(string fromPhoneNumber)
+        private void UpdateRestart(string fromPhoneNumber)
         {
-                //_lastMessageState = "";
-                UpdateLastMessageState(fromPhoneNumber, "");
-                //_montoFactura = "";
-                UpdateMontoFactura(fromPhoneNumber, "");
-                //_tipoProgramación = "";
-                UpdatetTipoProgramación(fromPhoneNumber, "");
-                //_oldUserMessage = "0";
-                UpdateOldUserMessage(fromPhoneNumber, "0");
-                //_usoCFDI = "";
-                UpdateUsoCFDI(fromPhoneNumber, "");
-                //_usuarioAUsar = "";
-                UpdateUsuarioAUsar(fromPhoneNumber, "");
-                //_usuarioAUsarID = "";
-                UpdateUsuarioAUsarID(fromPhoneNumber, "");
-                //_NITCliente = "";
-                UpdateNITCliente(fromPhoneNumber, "");
-                //_NITComprador = "";
-                UpdateNITComprador(fromPhoneNumber, "");
-                //_NombreComprador = "";
-                UpdateNombreComprador(fromPhoneNumber, "");
+            UpdateLastMessageState(fromPhoneNumber, "");
+            UpdateMontoFactura(fromPhoneNumber, "");
+            UpdateOldUserMessage(fromPhoneNumber, "0");
+            UpdateNITCliente(fromPhoneNumber, "");
+            UpdateNITComprador(fromPhoneNumber, "");
+            UpdateNombreComprador(fromPhoneNumber, "");
+            //UpdateFactura(fromPhoneNumber, "", "", "", "");
+            UpdateObservaciones(fromPhoneNumber, "");
+            UpdateProductosEnFacturaList(fromPhoneNumber, new List<string> { });
+            UpdatePrecioUnitarioYCantidad(fromPhoneNumber, new List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> { });
+            correosACopiar = new List<string> { };
+            _receivedMessages.Add("UpdateRestart");
+            _producto_a_modificar[fromPhoneNumber] = new() { };
         }
+        private void AddProductosEnFacturaList(string fromPhoneNumber, string NewProducto)
+        {
+            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
+            {
+                existingData.ListaProductos.Add(NewProducto);
+            }
+        }
+        private void AddProductosPrecioYCantidad(string fromPhoneNumber, Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad NewCantidadYPrecio)
+        {
+            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var existingData))
+            {
+                existingData.ListaPreciosYCantidades.Add(NewCantidadYPrecio);
+            }
+        }
+
         private string GetLastMessageState(string fromPhoneNumber) =>
     _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.lastMessageState : string.Empty;
         private string GetOldUserMessage(string fromPhoneNumber) =>
             _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.oldUserMessage : string.Empty;
         private string GetMontoFactura(string fromPhoneNumber) =>
             _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.montoFactura : string.Empty;
-        private string GetTipoProgramacion(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.tipoProgramación : string.Empty;
-        private string GetUsoCFDI(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.usoCFDI : string.Empty;
-        private string GetUsuarioAUsar(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.usuarioAUsar : string.Empty;
-        private string GetUsuarioAUsarID(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.usuarioAUsarID : string.Empty;
         private string GetNITCliente(string fromPhoneNumber) =>
             _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.NITCliente : string.Empty;
         private string GetNITComprador(string fromPhoneNumber) =>
             _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.NITComprador : string.Empty;
         private string GetNombreComprador(string fromPhoneNumber) =>
             _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.NombreComprador : string.Empty;
-        private List<Flow_response_json_Model_1297640437985053_InformacionDelCliente> GetClientExistance(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.clientExistance : new List<Flow_response_json_Model_1297640437985053_InformacionDelCliente>();
-        private byte GetValueInList(string fromPhoneNumber) =>
-            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.valueInList : (byte)0;
+        /*private (string telefono, string direccion, string monto, string descripcion) GetFactura(string fromPhoneNumber)
+        {
+            if (_RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data))
+            {
+                return (data.Factura_Telefono, data.Factura_dirección, data.Factura_Monto, data.Factura_Descripcón);
+            }
+            return (null, null, null, null);observaciones
+        }*/
+        private string GetObservaciones(string fromPhoneNumber) =>
+            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.Factura_Observaciones : string.Empty;
+        private List<string> GetProductosEnFacturaList(string fromPhoneNumber) =>
+            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.ListaProductos : new List<string>();
+        private List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad> GetPrecioUnitarioYCantidad(string fromPhoneNumber) =>
+            _RegisteredPhoneDicitonary.TryGetValue(fromPhoneNumber, out var data) ? data.ListaPreciosYCantidades : new List<Flow_response_json_Model_624251470432760_o_651685330992197_Precio_Unitario_Y_Cantidad>();
+
     }
 }
