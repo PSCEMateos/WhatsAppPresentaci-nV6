@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
 using System.Security.Cryptography;
-using WhatsAppPresentacionV6.Servicios;
-using WhatsAppPresentacionV6.Modelos.RecivedMedia;
-using WhatsAppPresentacionV6.Modelos;
+using WhatsAppPresentacionV11.Servicios;
+using WhatsAppPresentacionV11.Modelos.RecivedMedia;
+using WhatsAppPresentacionV11.Modelos;
 using System.Buffers.Text;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Org.BouncyCastle.Crypto;
@@ -15,7 +15,7 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 
-namespace WhatsAppPresentacionV6.Controllers
+namespace WhatsAppPresentacionV11.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -42,10 +42,10 @@ namespace WhatsAppPresentacionV6.Controllers
             _messageSendService = new WhatsAppMessageService(_idTelefono, Token_de_acceso);
 
         }
-
+        /*
         [HttpPost("crear-plantilla")]
         public async Task<IActionResult> CrearPlantilla(
-            /*[FromQuery] string nombrePlantilla,*/
+            /*[FromQuery] string nombrePlantilla,*//*
             [FromQuery] string categoria,
             [FromQuery] string idioma)
         {
@@ -59,7 +59,7 @@ namespace WhatsAppPresentacionV6.Controllers
                 return StatusCode(500, response);
 
             return Ok(response);
-        }
+        }*/
 
         private readonly string _facebookGraphVersion = "v22.0";
         private string BuildApiUrl() =>
@@ -270,8 +270,8 @@ namespace WhatsAppPresentacionV6.Controllers
                 return BadRequest($"Error al crear la plantilla: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}");
             string responseBody = await response.Content.ReadAsStringAsync();
             return Ok("Response: " + responseBody);
-        }*/
-        [HttpPost("crear-plantilla/probador6")]
+        }*//*
+        /*[HttpPost("crear-plantilla/probador6")]
         public async Task<IActionResult> CrearPlantillaProbador6()
         {
             string nombrePlantilla = $"amigo_plantilla_v7_unicode_saltos_slash_u000A";
@@ -628,7 +628,7 @@ namespace WhatsAppPresentacionV6.Controllers
                 return BadRequest($"Error al crear la plantilla: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}");
             string responseBody = await response.Content.ReadAsStringAsync();
             return Ok("Response: " + responseBody);
-        }
+        }*/
         [HttpPost("PublicKey/Upload")]
         public async Task<IActionResult> UploadPublicKey([FromBody] string publicKey)
         {
@@ -690,7 +690,7 @@ namespace WhatsAppPresentacionV6.Controllers
             }
 
         }
-        private static bool EsBase64Valido(string encryptedData)
+        /*private static bool EsBase64Valido(string encryptedData)
         {
             _receivedMessages.Add($"Base 64?");
             encryptedData = encryptedData.Trim();
@@ -718,7 +718,7 @@ namespace WhatsAppPresentacionV6.Controllers
             return decryptedBytes;//Encoding.UTF8.GetString(decryptedBytes);
             //as a result, you'll get a 128-bit payload encryption key
         }*/
-        private string DecryptData(string encryptedData, byte[] decryptedKeyJson, string initialVector)
+        /*private string DecryptData(string encryptedData, byte[] decryptedKeyJson, string initialVector)
         {
             _receivedMessages.Add($"DecryptData:");
 
@@ -771,7 +771,7 @@ namespace WhatsAppPresentacionV6.Controllers
         private string ConvertFromUrlSafeBase64(string urlSafeBase64)
         {
             return urlSafeBase64.Replace('-', '+').Replace('_', '/');
-        }
+        }*/
         
         [HttpGet("messages")]
         public dynamic GetMessages()
@@ -784,7 +784,7 @@ namespace WhatsAppPresentacionV6.Controllers
         [HttpPost("mensajes/Mandar/Flow")]
         public async Task<IActionResult> MandarFlow()
         {
-            string mensajeResultado = await _messageSendService.EnviarFlow("525526903132", "647884018138514", "Abc123", "published", "Tu teléfono +52 55 2690 3132 aún no está registrado.", "¡Regístrate!");
+            string mensajeResultado = await _messageSendService.EnviarFlow("525526903132", "651685330992197", "Abc123", "published", "Tu teléfono +52 55 2690 3132 aún no está registrado.", "¡Regístrate!");
             _receivedMessages.Add(mensajeResultado);
             return Ok(mensajeResultado);
         }
@@ -802,7 +802,22 @@ namespace WhatsAppPresentacionV6.Controllers
             _receivedMessages.Add(mensajeResultado);
             return Ok(mensajeResultado);
         }
+        [HttpPost("mensajes/Mandar/Flow/ConData")]
+        public async Task<IActionResult> MandarFlowConData()
+        {
+            try
+            {
+            var parameters = new { RegistraCliente_Tipo_Cliente = "Tipo_Persona_Juridica", RegisterClient_Juridical_Razon_Social = "Mi empresa" };
+            _receivedMessages.Add("1");
+            string mensajeResultado = await _messageSendService.EnviarFlowConDatos("525526903132", "592589283853511", "pruebaconDataCrearCli", "published", "Prueba con Data", "Data",  parameters, "Persona_Juridica_Info_Base");
+            _receivedMessages.Add(mensajeResultado);
+            return Ok(mensajeResultado);
 
+            }catch (Exception es)
+            {
+                _receivedMessages.Add($"[Error] {es}");
+                return BadRequest($"Error processing request {es.Message}");
+            }
+        }
     }
 }
-//Flow  2213906279007190
