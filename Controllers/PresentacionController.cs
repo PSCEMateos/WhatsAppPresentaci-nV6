@@ -1,4 +1,4 @@
-﻿
+
 using WhatsAppPresentacionV11.Modelos;
 using WhatsAppPresentacionV11.Servicios;
 using Microsoft.AspNetCore.Mvc;
@@ -664,7 +664,7 @@ namespace WhatsAppPresentacionV11.Controllers
                     messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que información de la factura deseas modificar?", "Información Guardada", "Hay 3 opciones", _botones);
                     break;
                 case "opcion_Finalizar_Modificar_Opciones":
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Info_Adicional", "Info adicional"), ("opcion_Finalizar_Factura", "Finalizar factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Observaciones_Y_Mail", "Info adicional"), ("opcion_Finalizar_Factura", "Finalizar factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
                     messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que información de la factura deseas modificar?", "Información Guardada", "Hay 3 opciones", _botones);
                     break;
                 case "opcion_Finalizar_Modificar_Cliente":
@@ -759,9 +759,9 @@ namespace WhatsAppPresentacionV11.Controllers
                     _receivedMessages.Add($"Lista de opciones enviada");
 
                     break;
-                case "opcion_Finalizar_Modificar_Info_Adicional":
+                /*case "opcion_Finalizar_Modificar_Info_Adicional":
                     // implementar lógica para modificar la información adicional
-                    break;
+                    break;*/
                 default:
                     messageStatus = await _messageSendService.EnviarTexto(fromPhoneNumber, "Opción no reconocida.");
                     messageStatus = await MainMenuButton(fromPhoneNumber, null);
@@ -983,8 +983,20 @@ namespace WhatsAppPresentacionV11.Controllers
 
                     //messageStatus = await _messageSendService.EnviarTexto( fromPhoneNumber, $"Producto eliminado: *{nombreProductoQuitar}*" );
 
-                    _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Quitar otro"), ("opcion_Finalizar_Factura", "Continuar"), ("opcion_Cancelar", "Reiniciar Proceso") };
-                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, $"Producto eliminado: *{nombreProductoQuitar}*", "Información sigue Guardada", "Hay 3 opciones", _botones);
+                    List<string> productosQuitarList = GetProductosEnFacturaList(fromPhoneNumber);
+                    string messageToSent;
+                    if (!productosQuitarList.Any())
+                    {
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Añanir producto"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageToSent = "No hay productos con los que facturar";
+                    }
+                    else
+                    {
+                        _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Quitar", "Quitar otro"), ("opcion_Finalizar_Factura", "Continuar"), ("opcion_Cancelar", "Reiniciar Proceso") };
+                        messageToSent = "Producto eliminado";
+                    }
+
+                    messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, messageToSent, $"Código de producto: {nombreProductoQuitar}", "Hay 3 opciones", _botones);
 
                     _receivedMessages.Add(messageStatus);
 
@@ -2437,7 +2449,7 @@ namespace WhatsAppPresentacionV11.Controllers
 
             if (GetLastMessageState(fromPhoneNumber) == "opcion_Finalizar_Modificar_Productos_Anadir")
             {
-                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Otro producto"), ("opcion_Cancelar", "Reiniciar Proceso"), ("opcion_Finalizar_Modificar_Factura", "Cancelar") };
+                _botones = new List<(string ButtonId, string ButtonLabelText)> { ("opcion_Finalizar_Modificar_Productos_Anadir", "Otro producto"), ("opcion_Finalizar_Factura", "Finalizar factura"), ("opcion_Cancelar", "Reiniciar Proceso") };
                 messageStatus = await _messageSendService.EnviarBotonInteractivo(fromPhoneNumber, "¿Que deseas hacer?", "¿Añadir otro producto o Finalizar la factura?", "No puedes crear aquí", _botones);
 
             }
